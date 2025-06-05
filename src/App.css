@@ -1,0 +1,23 @@
+.overflow-y-auto {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.overflow-y-auto::-webkit-scrollbar {
+  display: none;
+}
+* {
+  cursor: default;
+}
+
+input,
+textarea {
+  cursor: text;
+}
+
+/* Chặn con trỏ và nháy caret ở vùng contentEditable không mong muốn */
+[contenteditable="true"] {
+  cursor: default !important;
+  caret-color: transparent;
+  user-select: none;
+}
