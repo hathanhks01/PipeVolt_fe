@@ -114,10 +114,11 @@ const Product = () => {
     }
   }, [Category]);
 
-  return (
-    <div className="w-full px-16 min-h-screen bg-gray-50">
-      <div className="w-full max-w-none px-4 py-6">
-        {/* Category Section */}
+ return (
+  <div className="w-full px-16 min-h-screen bg-gray-50">
+    <div className="w-full max-w-none px-4 py-6">
+      {/* Category Section */}
+      {Category.length > 0 && (
         <div className="relative">
           <div>
             <h1>Danh Mục</h1>
@@ -160,8 +161,10 @@ const Product = () => {
             </button>
           )}
         </div>
+      )}
 
-        {/* All Products Section */}
+      {/* All Products Section */}
+      {product.length > 0 ? (
         <div>
           <div className="flex justify-between items-center mb-4">
             <h1 className="">SẢN PHẨM</h1>
@@ -245,9 +248,14 @@ const Product = () => {
             </div>
           )}
         </div>
-      </div>
+      ) : (
+        <div className="text-center py-24 text-gray-500 text-lg">
+          Không có sản phẩm nào để hiển thị.
+        </div>
+      )}
     </div>
-  );
+  </div>
+);
 };
 
 export default Product;

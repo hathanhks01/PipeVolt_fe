@@ -62,6 +62,15 @@ const CustomerService = {
       console.error(`Error deleting customer with ID ${id}:`, error);
       throw error;
     }
+  },
+    getCustomerByUserId: async (userId) => {
+    try {
+      const response = await http.get(`Customers/by-user/${userId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching customer by userId ${userId}:`, error);
+      throw error;
+    }
   }
 };
 

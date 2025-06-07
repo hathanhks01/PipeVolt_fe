@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, ShoppingCart, LogIn, User, ChevronDown, LogOut, Settings, Search, UserCircle, LayoutDashboard } from 'lucide-react';
+import { Menu, ShoppingCart, LogIn, User, ChevronDown, LogOut, Settings, Search, UserCircle, FileText } from 'lucide-react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import Login from '../../Pages/Auth/Login';
 import AuthService from '../../../Services/AuthService';
@@ -132,6 +132,14 @@ const Navbar = () => {
         <UserCircle className="mr-3 h-4 w-4" />
         Thông tin cá nhân
       </Link>
+      <Link
+      to="/orders"
+      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+      onClick={() => setShowUserDropdown(false)}
+    >
+      <FileText className="mr-3 h-4 w-4" />
+      Đơn hàng của tôi
+    </Link>
       {isAdmin == 0 && (
         <Link
           to="/admin/dashboard"

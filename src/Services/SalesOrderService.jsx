@@ -59,7 +59,17 @@ const SalesOrderService = {
       console.error(`Error deleting sales order with ID ${id}:`, error);
       throw error;
     }
-  }
+  },
+  getOrdersByUserId: async (userId) => {
+    try {
+      const response = await http.get(`SalesOrders/by-user/${userId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching sales orders by userId ${userId}:`, error);
+      throw error;
+    }
+  },
+  
 };
 
 export default SalesOrderService;

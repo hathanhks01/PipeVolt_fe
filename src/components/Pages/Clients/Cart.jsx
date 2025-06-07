@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ShoppingCart, Plus, Minus, Trash2, Package, AlertCircle, CheckCircle2 } from 'lucide-react';
 import CartItemService from '../../../Services/CartItemService';
 import JwtUtils from '../../../constants/JwtUtils';
-
+import { useNavigate } from 'react-router-dom';
 const CartItemList = ({ cartId = 1 }) => {
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,7 +16,8 @@ const CartItemList = ({ cartId = 1 }) => {
   useEffect(() => {
     loadCartItems();
   }, [cartId]);
-
+ const navigate = useNavigate();
+ 
   const loadCartItems = async () => {
     try {
       setLoading(true);
@@ -160,15 +161,15 @@ const CartItemList = ({ cartId = 1 }) => {
     }).format(amount);
   };
 
-  const handleCheckout = () => {
-    const selectedCartItems = cartItems.filter(item => selectedItems.has(item.cartItemId));
-    if (selectedCartItems.length === 0) {
-      showNotification('Vui lòng chọn ít nhất một sản phẩm để thanh toán', 'error');
-      return;
-    }
-    window.location.href = '/checkout'; // Replace with actual checkout logic if needed
-  };
-
+const handleCheckout = () => {
+  const selectedCartItems = cartItems.filter(item => selectedItems.has(item.cartItemId));
+  if (selectedCartItems.length === 0) {
+    showNotification('Vui lòng chọn ít nhất một sản phẩm để thanh toán', 'error');
+    return;
+  }
+  // Sử dụng react-router-dom navigate để chuyển trang và truyền state
+  navigate('/checkout', { state: { selectedCartItems } });
+};
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
