@@ -62,7 +62,18 @@ const EmployeeService = {
       console.error(`Error deleting employee with ID ${id}:`, error);
       throw error;
     }
-  }
+  },
+
+  // Tạo tài khoản cho nhân viên
+  generateAccount: async (employeeId) => {
+    try {
+      const response = await http.post(`Employees/generateAccount?EmployeeId=${employeeId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error generating account:', error);
+      throw error;
+    }
+  },
 };
 
 export default EmployeeService;

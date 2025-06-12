@@ -28,7 +28,6 @@ const CardProduct = ({ productId, name, image, description, sellingPrice }) => {
       <div className="p-4 bg-white">
         <div>
           <h3 className="font-medium text-sm text-gray-800">{name}</h3>
-          <p className="text-xs text-gray-500">{description}</p>
           <p className="font-bold text-sm mt-1">{sellingPrice} VND</p>
         </div>
       </div>

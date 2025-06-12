@@ -19,6 +19,21 @@ const CheckoutService = {
       headers: { 'Content-Type': 'application/json' }
     });
     return response.data;
+  },
+
+  // Thanh toán tại quầy (POS)
+  posCheckout: async ({ items, paymentMethodId, customerInfo, cashierId, discountPercent }) => {
+    const body = {
+      items,
+      paymentMethodId,
+      customerInfo,
+      cashierId,
+      discountPercent
+    };
+    const response = await http.post('/Checkout/pos', body, {
+      headers: { 'Content-Type': 'application/json' }
+    });
+    return response.data;
   }
 };
 

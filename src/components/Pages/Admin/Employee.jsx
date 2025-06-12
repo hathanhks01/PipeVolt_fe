@@ -10,6 +10,7 @@ const Employee = () => {
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [showAccountModal, setShowAccountModal] = useState(false);
 
     // State chứa dữ liệu nhân viên hiện tại để thao tác Add/Edit/Delete
     const [currentEmployee, setCurrentEmployee] = useState({
@@ -21,6 +22,8 @@ const Employee = () => {
         email: '',
         hireDate: '',
     });
+
+    const [accountInfo, setAccountInfo] = useState(null);
 
     // Lấy danh sách nhân viên
     useEffect(() => {
@@ -146,6 +149,17 @@ const Employee = () => {
         setShowDeleteModal(true);
     };
 
+    // Tạo tài khoản đăng nhập cho nhân viên
+    const handleGenerateAccount = async (employeeId) => {
+        try {
+            const result = await EmployeeService.generateAccount(employeeId);
+            setAccountInfo(result);
+            setShowAccountModal(true);
+        } catch (error) {
+            alert('Tạo tài khoản thất bại hoặc nhân viên đã có tài khoản!');
+        }
+    };
+
     return (
         <div className="p-4">
             <div className="flex justify-between items-center mb-4">
@@ -207,9 +221,16 @@ const Employee = () => {
                                 </button>
                                 <button
                                     onClick={() => openDeleteModal(emp)}
-                                    className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
+                                    className="bg-red-500 text-white px-2 py-1 rounded mr-2 hover:bg-red-600"
                                 >
                                     Xóa
+                                </button>
+                                <button
+                                    onClick={() => handleGenerateAccount(emp.employeeId)}
+                                    className="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600"
+                                    title="Tạo tài khoản đăng nhập"
+                                >
+                                    Tạo tài khoản
                                 </button>
                             </td>
                         </tr>
@@ -364,6 +385,23 @@ const Employee = () => {
                                 Xóa
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Tạo tài khoản */}
+            {showAccountModal && accountInfo && (
+                <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded shadow-lg w-80">
+                        <h2 className="text-xl font-semibold mb-4 text-green-600">Tạo tài khoản thành công!</h2>
+                        <div className="mb-2">Tên đăng nhập: <strong>{accountInfo.username}</strong></div>
+                        <div className="mb-4">Mật khẩu mặc định: <strong>{accountInfo.username}</strong></div>
+                        <button
+                            onClick={() => setShowAccountModal(false)}
+                            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 w-full"
+                        >
+                            Đóng
+                        </button>
                     </div>
                 </div>
             )}

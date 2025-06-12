@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import { googleLogout } from '@react-oauth/google';
 import {
   Home,
   Users,
@@ -30,6 +31,7 @@ const Sidebar = () => {
       if (username) {
         // Gọi API logout backend
         await AuthService.logout(JSON.parse(username));
+         googleLogout();
       }
     } catch (error) {
       console.error('Logout API error:', error);
@@ -61,6 +63,7 @@ const Sidebar = () => {
       icon: <ShoppingCart size={20} />,
       children: [
         { name: 'Đơn hàng', to: '/admin/Orders' },
+        { name: 'Bán tại quầy', to: '/admin/pos' }, 
         { name: 'Bảo hành', to: '/admin/Warranties' },
       ],
     },
@@ -85,6 +88,7 @@ const Sidebar = () => {
     { name: 'Tài khoản & Quyền', icon: <KeyRound size={20} />, to: '/admin/UserAccounts' },
     { name: 'Báo cáo', icon: <BarChart2 size={20} />, to: '/admin/Reports' },
     { name: 'Nhật ký hệ thống', icon: <Database size={20} />, to: '/admin/SystemLogs' },
+    { name: 'Chăm sóc khách hàng', icon: <BookOpen size={20} />, to: '/admin/chat' }, // Thêm dòng này
   ];
 
   // Thiết lập sẵn tối đa 1 submenu mở cùng lúc

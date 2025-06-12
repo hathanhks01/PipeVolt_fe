@@ -4,14 +4,20 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 import Login from '../../Pages/Auth/Login';
 import AuthService from '../../../Services/AuthService';
 import JwtUtils from '../../../constants/JwtUtils';
-
+import ProductService from '../../../Services/ProductService';
+import { googleLogout } from '@react-oauth/google';
+import { Url } from '../../../constants/config';
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [username, setUsername] = useState(null);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [showResults, setShowResults] = useState(false);
   const dropdownRef = useRef(null);
+  const searchTimeout = useRef();
   const navigate = useNavigate();
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
@@ -38,27 +44,24 @@ const Navbar = () => {
   const checkAuthStatus = () => {
     try {
       const token = sessionStorage.getItem('authToken');
-      const usernameStr = sessionStorage.getItem('username');
-      if (token && usernameStr && usernameStr !== 'undefined' && usernameStr !== 'null') {
-        const parsedUsername = JSON.parse(usernameStr);
+      const userInfoStr = sessionStorage.getItem('userInfo');
+      if (token && userInfoStr && userInfoStr !== 'undefined' && userInfoStr !== 'null') {
+        const parsedUser = JSON.parse(userInfoStr);
         setIsLoggedIn(true);
-        setUsername(parsedUsername);
+        setUsername(parsedUser.username || parsedUser.Username || parsedUser.email || '');
       } else {
         setIsLoggedIn(false);
         setUsername(null);
-        if (!token || !usernameStr || usernameStr === 'undefined' || usernameStr === 'null') {
-          sessionStorage.removeItem('authToken');
-          sessionStorage.removeItem('username');
-          sessionStorage.removeItem('savedUserName');
-          sessionStorage.removeItem('savedPassword');
-        }
+        sessionStorage.removeItem('authToken');
+        sessionStorage.removeItem('userInfo');
+        sessionStorage.removeItem('savedUserName');
+        sessionStorage.removeItem('savedPassword');
       }
     } catch (error) {
-      console.error('Error checking auth status:', error);
       setIsLoggedIn(false);
       setUsername(null);
       sessionStorage.removeItem('authToken');
-      sessionStorage.removeItem('username');
+      sessionStorage.removeItem('userInfo');
       sessionStorage.removeItem('savedUserName');
       sessionStorage.removeItem('savedPassword');
     }
@@ -81,6 +84,7 @@ const Navbar = () => {
       await AuthService.logout(username);
       setIsLoggedIn(false);
       setUsername(null);
+       googleLogout();
       setShowUserDropdown(false);
       navigate('/HomePage');
     } catch (error) {
@@ -102,6 +106,40 @@ const Navbar = () => {
     }, 100);
     setShowLogin(false);
   };
+
+  // Hàm xử lý tìm kiếm (debounce)
+  const handleSearchChange = async (e) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    clearTimeout(searchTimeout.current);
+    if (!value.trim()) {
+      setSearchResults([]);
+      setShowResults(false);
+      return;
+    }
+    searchTimeout.current = setTimeout(async () => {
+      try {
+        const products = await ProductService.searchProducts(value);
+        setSearchResults(products);
+        setShowResults(true);
+      } catch {
+        setSearchResults([]);
+        setShowResults(false);
+      }
+    }, 400);
+  };
+
+  // Đóng dropdown khi click ngoài
+  const searchBoxRef = useRef();
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchBoxRef.current && !searchBoxRef.current.contains(event.target)) {
+        setShowResults(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Hiệu ứng gạch chân đẹp
   const baseClass = "relative px-4 py-2 text-white transition-all duration-300 ease-in-out group";
@@ -140,7 +178,7 @@ const Navbar = () => {
       <FileText className="mr-3 h-4 w-4" />
       Đơn hàng của tôi
     </Link>
-      {isAdmin == 0 && (
+      {(isAdmin == 0 || isAdmin == 1) && (
         <Link
           to="/admin/dashboard"
           className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -163,18 +201,18 @@ const Navbar = () => {
   return (
     <>
       <nav className="bg-gray-900 text-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <div className="flex items-center">
-              <Link to="/" className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+              <Link to="/" className="text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
                 PipeVolt
               </Link>
             </div>
 
             {/* Desktop Menu */}
             <div className="hidden md:block">
-              <div className="ml-10 flex items-center space-x-2">
+              <div className="ml-2 sm:ml-10 flex items-center space-x-2">
                 {[
                   { to: '/HomePage', label: 'Trang chủ' },
                   { to: '/products', label: 'Sản Phẩm' },
@@ -198,15 +236,54 @@ const Navbar = () => {
                 ))}
 
                 {/* Search */}
-                <div className="relative ml-6">
+                <div className="relative ml-2 sm:ml-6" ref={searchBoxRef}>
                   <input
-                    className="w-80 md:w-96 rounded-full px-5 py-2 pr-12 text-gray-900 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 shadow transition-all duration-200"
+                    className="w-32 sm:w-60 md:w-80 lg:w-96 rounded-full px-3 sm:px-5 py-2 pr-10 text-gray-900 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 shadow transition-all duration-200 text-xs sm:text-sm"
                     type="text"
                     placeholder="Tìm kiếm sản phẩm, dịch vụ..."
+                    value={searchTerm}
+                    onChange={handleSearchChange}
+                    onFocus={() => searchResults.length > 0 && setShowResults(true)}
                   />
-                  <button className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow transition-colors">
-                    <Search className="h-5 w-5" />
+                  <button
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow transition-colors"
+                    tabIndex={-1}
+                    type="button"
+                  >
+                    <Search className="h-4 w-4 sm:h-5 sm:w-5" />
                   </button>
+                  {showResults && searchResults.length > 0 && (
+                    <div className="absolute left-0 mt-2 w-full bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
+                      {searchResults.map(product => (
+                        <Link
+                          to={`/products/${product.productId}`}
+                          key={product.productId}
+                          className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 transition"
+                          onClick={() => {
+                            setShowResults(false);
+                            setSearchTerm('');
+                            setSearchResults([]);
+                          }}
+                        >
+                          <img
+                            src={`${Url}${product.imageUrl}`}
+                            alt={product.productName}
+                            className="w-10 h-10 object-cover rounded border"
+                            onError={e => { e.target.src = '/no-image.png'; }}
+                          />
+                          <div>
+                            <div className="font-medium text-gray-700 text-sm">{product.productName}</div>
+                            <div className="text-xs text-gray-500">
+                              {product.productCode} - {product.sellingPrice?.toLocaleString('vi-VN')}đ / {product.unit}
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                      {searchResults.length === 0 && (
+                        <div className="px-4 py-2 text-gray-500 text-sm">Không tìm thấy sản phẩm phù hợp</div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Cart */}

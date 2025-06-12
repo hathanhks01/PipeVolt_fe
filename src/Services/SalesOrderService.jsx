@@ -69,7 +69,16 @@ const SalesOrderService = {
       throw error;
     }
   },
-  
+  // Lấy dữ liệu in hóa đơn theo orderId
+  getPrintBill: async (orderId) => {
+    try {
+      const response = await http.get(`SalesOrders/print-bill/${orderId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching print bill for orderId ${orderId}:`, error);
+      throw error;
+    }
+  },
 };
 
 export default SalesOrderService;

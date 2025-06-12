@@ -1,8 +1,9 @@
-import { Check, X } from 'lucide-react';
+import { Check, X, Eye, EyeOff } from 'lucide-react'; // Thêm icon Eye, EyeOff
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthService from '../../../Services/AuthService';
 import JwtUtils from '../../../constants/JwtUtils';
+import { GoogleLogin, googleLogout } from '@react-oauth/google';
 
 const Login = ({ isModal = false, onClose, onLoginSuccess }) => {
   const [userName, setUserName] = useState('');
@@ -11,6 +12,7 @@ const Login = ({ isModal = false, onClose, onLoginSuccess }) => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // Thêm state này
   const navigate = useNavigate();
 
   const [registerData, setRegisterData] = useState({
@@ -193,15 +195,25 @@ const Login = ({ isModal = false, onClose, onLoginSuccess }) => {
             <label htmlFor="password" className="block text-sm font-medium text-gray-700">
               Mật khẩu:
             </label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder="Nhập mật khẩu"
-              disabled={isLoading}
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 pr-10"
+                placeholder="Nhập mật khẩu"
+                disabled={isLoading}
+              />
+              <button
+                type="button"
+                tabIndex={-1}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-700"
+                onClick={() => setShowPassword((v) => !v)}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
           </div>
 
           <div className="mb-4 flex items-center">
@@ -241,6 +253,39 @@ const Login = ({ isModal = false, onClose, onLoginSuccess }) => {
             </a>
           </div>
         </form>
+
+        <div className="mt-4 flex flex-col items-center">
+          <GoogleLogin
+            onSuccess={async (credentialResponse) => {
+              try {
+                const response = await AuthService.googleLogin(credentialResponse.credential);
+                if (response.success) {
+                  sessionStorage.setItem('authToken', response.token);
+                  const userObj = {
+                    username: response.username,
+                    userType: response.userType,
+                    userId: response.userId
+                  };
+                  sessionStorage.setItem('userInfo', JSON.stringify(userObj));
+                  if (onLoginSuccess) onLoginSuccess(userObj);
+                  if (isModal && onClose) onClose();
+                  var checkAccess = JwtUtils.getCurrentUserType();
+                  if (checkAccess !== null && checkAccess === 0) {
+                    navigate('/admin/dashboard');
+                  } else {
+                    navigate('/');
+                  }
+                } else {
+                  setError(response.message);
+                }
+              } catch (err) {
+                setError('Đăng nhập Google thất bại.');
+              }
+            }}
+            onError={() => setError('Đăng nhập Google thất bại.')}
+            useOneTap
+          />
+        </div>
       </div>
 
       {/* Register Modal */}

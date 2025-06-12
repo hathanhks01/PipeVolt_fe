@@ -20,17 +20,17 @@ const ProductService = {
     });
     return response.data;
   },
-getProductsByCategory: async (categoryId) => {
-  try {
-    const response = await http.get('Products', {
-      params: { categoryId }
-    });
-    return response.data;
-  } catch (error) {
-    console.error(`Error fetching products by categoryId ${categoryId}:`, error);
-    throw error;
-  }
-},
+  getProductsByCategory: async (categoryId) => {
+    try {
+      const response = await http.get('Products', {
+        params: { categoryId }
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching products by categoryId ${categoryId}:`, error);
+      throw error;
+    }
+  },
   // Lấy tất cả sản phẩm
   getAllProducts: async () => {
     try {
@@ -70,7 +70,20 @@ getProductsByCategory: async (categoryId) => {
       console.error(`Error deleting Product with ID ${id}:`, error);
       throw error;
     }
-  }
+  },
+
+  // Tìm kiếm sản phẩm theo từ khóa (tên sản phẩm, danh mục, brand)
+  searchProducts: async (keyword) => {
+    try {
+      const response = await http.get('Products/searchTemp', {
+        params: { keyword }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error searching products:', error);
+      throw error;
+    }
+  },
 };
 
 export default ProductService;

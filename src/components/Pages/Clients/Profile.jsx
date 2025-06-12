@@ -38,6 +38,7 @@ const Profile = () => {
       // Chỉ cập nhật các trường cho UpdateCustomerDto
       const updateDto = {
         customerId: form.customerId,
+        customerCode: form.customerCode || customer.customerCode || '',
         customerName: form.customerName,
         email: form.email,
         phone: form.phone,

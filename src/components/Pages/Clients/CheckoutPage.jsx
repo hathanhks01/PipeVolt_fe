@@ -34,15 +34,17 @@ const CheckoutPage = () => {
     if (userId) {
       CustomerService.getCustomerByUserId(userId)
         .then(data => {
+          console.log('Customer data:', data); // Thêm dòng này để debug
           setCustomerInfo({
             name: data.customerName || '',
             phone: data.phone || '',
             address: data.address || '',
             email: data.email || '',
+            customerId: data.customerId || '', // Đảm bảo BE trả về trường này
           });
         })
-        .catch(() => {
-          // Nếu lỗi thì giữ form trống
+        .catch((err) => {
+          console.error('Lỗi lấy thông tin khách hàng:', err);
         });
     }
   }, []);
@@ -98,12 +100,12 @@ const CheckoutPage = () => {
     setError(null);
 
     try {
-      const customerId = JwtUtils.getCurrentUserId();
+      const customerId = customerInfo.customerId;
+      console.log('Customer ID:', customerId); 
       if (!customerId) {
-        throw new Error('Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.');
+        throw new Error('Không tìm thấy thông tin khách hàng. Vui lòng đăng nhập lại.');
       }
 
-      // Lấy danh sách cartItemId đã chọn
       const cartItemIds = selectedCartItems.map(item => item.cartItemId);
 
       await CheckoutService.checkoutPartial(customerId, paymentMethodId, cartItemIds);

@@ -54,6 +54,18 @@ const AuthService = {
   getToken: () => {
     return sessionStorage.getItem('authToken');
   },
+
+  googleLogin: async (idToken) => {
+    try {
+      const response = await http.post('/Auth/GoogleLogin', { idToken }, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error during Google login:', error);
+      throw error.response?.data || { success: false, message: 'Google login failed' };
+    }
+  },
 };
 
 export default AuthService;

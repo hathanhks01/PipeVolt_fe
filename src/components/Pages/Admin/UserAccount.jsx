@@ -201,7 +201,6 @@ const UserAccount = () => {
             <table className="min-w-full bg-white border border-gray-300">
                 <thead>
                     <tr className="bg-gray-100">
-                        <th className="py-2 px-4 border">#</th>
                         <th className="py-2 px-4 border">Mã tài khoản</th>
                         <th className="py-2 px-4 border">Tên người dùng</th>
                         <th className="py-2 px-4 border">Loại người dùng</th>
@@ -214,7 +213,6 @@ const UserAccount = () => {
                 <tbody>
                     {currentItems.map((item, index) => (
                         <tr key={item.userId || index} className="hover:bg-gray-50">
-                            <td className="py-2 px-4 border">{indexOfFirstItem + index + 1}</td>
                             <td className="py-2 px-4 border">{item.userId || 'N/A'}</td>
                             <td className="py-2 px-4 border">{item.username || 'N/A'}</td>
                             <td className="py-2 px-4 border">

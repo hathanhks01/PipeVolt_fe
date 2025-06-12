@@ -10,7 +10,7 @@ const http = axios.create({
 // Thêm interceptor để tự động đính kèm Authorization header nếu có token
 http.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('authToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
