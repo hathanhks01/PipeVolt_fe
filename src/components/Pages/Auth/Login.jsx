@@ -50,10 +50,14 @@ const Login = ({ isModal = false, onClose, onLoginSuccess }) => {
     try {
       const response = await AuthService.login({ username: userName, password });
       if (response.success) {
-        // Save authentication data
         sessionStorage.setItem('authToken', response.token);
-        sessionStorage.setItem('userInfo', JSON.stringify(response.user));
-        
+        const userObj = {
+          username: response.username,
+          userType: response.userType,
+          userId: response.userId
+        };
+        sessionStorage.setItem('userInfo', JSON.stringify(userObj));
+
         if (rememberMe) {
           sessionStorage.setItem('savedUserName', userName);
           sessionStorage.setItem('savedPassword', password);
@@ -70,9 +74,9 @@ const Login = ({ isModal = false, onClose, onLoginSuccess }) => {
         if (isModal && onClose) {
           onClose();
         }
-        
-        var checkAccess=JwtUtils.getCurrentUserType();
-        if (checkAccess!=null && checkAccess==0 ) {
+
+        var checkAccess = JwtUtils.getCurrentUserType();
+        if (checkAccess != null && checkAccess == 0) {
           navigate('/admin/dashboard');
         } else {
           navigate('/');
@@ -232,9 +236,8 @@ const Login = ({ isModal = false, onClose, onLoginSuccess }) => {
 
           <button
             type="submit"
-            className={`w-full py-2 px-4 bg-indigo-600 text-white font-bold rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-              isLoading ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
+            className={`w-full py-2 px-4 bg-indigo-600 text-white font-bold rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
             disabled={isLoading}
           >
             {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
@@ -267,10 +270,25 @@ const Login = ({ isModal = false, onClose, onLoginSuccess }) => {
                     userId: response.userId
                   };
                   sessionStorage.setItem('userInfo', JSON.stringify(userObj));
-                  if (onLoginSuccess) onLoginSuccess(userObj);
-                  if (isModal && onClose) onClose();
+
+                  if (rememberMe) {
+                    sessionStorage.setItem('savedUserName', userName);
+                    sessionStorage.setItem('savedPassword', password);
+                  } else {
+                    sessionStorage.removeItem('savedUserName');
+                    sessionStorage.removeItem('savedPassword');
+                  }
+
+                  if (onLoginSuccess) {
+                    onLoginSuccess(userObj);
+                  }
+
+                  if (isModal && onClose) {
+                    onClose();
+                  }
+
                   var checkAccess = JwtUtils.getCurrentUserType();
-                  if (checkAccess !== null && checkAccess === 0) {
+                  if (checkAccess != null && checkAccess == 0) {
                     navigate('/admin/dashboard');
                   } else {
                     navigate('/');
@@ -401,9 +419,8 @@ const Login = ({ isModal = false, onClose, onLoginSuccess }) => {
 
               <button
                 type="submit"
-                className={`w-full py-2 px-4 bg-indigo-600 text-white font-bold rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                  isRegistering ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
+                className={`w-full py-2 px-4 bg-indigo-600 text-white font-bold rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isRegistering ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
                 disabled={isRegistering}
               >
                 {isRegistering ? 'Đang đăng ký...' : 'Đăng ký'}

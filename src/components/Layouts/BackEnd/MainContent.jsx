@@ -14,6 +14,7 @@ import Supplier from '../../Pages/Admin/Supplier';
 import ChatAdmin from '../../Pages/Admin/ChatAdmin';
 import POS from '../../Pages/Admin/POS';
 import PrintBill from '../../Pages/Admin/PrintBill';
+import Reports from '../../Pages/Admin/Reports';
 const MainContent = () => {
   return (
     <Routes>
@@ -32,6 +33,7 @@ const MainContent = () => {
       <Route path="/chat" element={<ChatAdmin />} />
       <Route path="/pos" element={<POS />} />
       <Route path="/print-bill/:orderId" element={PrintBill} />
+      <Route path="/Reports" element={<Reports />} />
     </Routes>
 
   )

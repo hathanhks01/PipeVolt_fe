@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FileText, Loader2, AlertCircle, ShoppingBag } from 'lucide-react';
 import SalesOrderService from '../../../Services/SalesOrderService';
 import JwtUtils from '../../../constants/JwtUtils';
@@ -42,10 +43,12 @@ const statusColor = {
 };
 
 const MyOrders = () => {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [tab, setTab] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [reorderingId, setReorderingId] = useState(null);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -75,6 +78,21 @@ const MyOrders = () => {
 
   const formatCurrency = (amount) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+
+  // Mở ChatWidget bằng custom event
+  const handleContactSeller = () => {
+    window.dispatchEvent(new CustomEvent('openChat'));
+  };
+
+  // Điều hướng tới trang chi tiết sản phẩm đầu tiên trong đơn hàng
+  const handleReorder = (order) => {
+    const items = order.orderDetails || [];
+    const firstItem = items[0];
+    const productId = firstItem?.productId || firstItem?.product?.productId;
+    if (!productId) return;
+    navigate(`/products/${productId}`);
+    console.log("đây là id"+ productId);
+  };
 
   return (
     <div className="max-w-6xl mx-auto p-6 bg-gray-50 min-h-screen flex">
@@ -205,10 +223,16 @@ const MyOrders = () => {
                           Đánh Giá
                         </button>
                       )}
-                      <button className="border px-4 py-2 rounded hover:bg-gray-100 transition-colors">
+                      <button
+                        onClick={handleContactSeller}
+                        className="border px-4 py-2 rounded hover:bg-gray-100 transition-colors"
+                      >
                         Liên Hệ Người Bán
                       </button>
-                      <button className="border px-4 py-2 rounded hover:bg-gray-100 transition-colors">
+                      <button
+                        onClick={() => handleReorder(order)}
+                        className="border px-4 py-2 rounded hover:bg-gray-100 transition-colors"
+                      >
                         Mua Lại
                       </button>
                     </div>

@@ -23,11 +23,13 @@ const Product = () => {
   const fetchProducts = async (page = 1) => {
     try {
       const response = await ProductsService.getAllProducts();
+      // Lọc sản phẩm còn hàng trước
+      const availableProducts = response.data.filter(p => p.quantity > 0);
       const startIndex = (page - 1) * pageSize;
       const endIndex = startIndex + pageSize;
-      const paginatedProducts = response.data.slice(startIndex, endIndex);
+      const paginatedProducts = availableProducts.slice(startIndex, endIndex);
       setProduct(paginatedProducts);
-      setTotalPages(Math.ceil(response.data.length / pageSize));
+      setTotalPages(Math.ceil(availableProducts.length / pageSize));
     } catch (error) {
       console.error('Error fetching products:', error);
     }

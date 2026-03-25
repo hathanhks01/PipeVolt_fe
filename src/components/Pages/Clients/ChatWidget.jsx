@@ -4,7 +4,7 @@ import * as signalR from '@microsoft/signalr';
 import ChatService from '../../../Services/ChatService';
 import JwtUtils from '../../../constants/JwtUtils';
 import { Url } from '../../../constants/config';
-
+import customerservice from '../../../Services/CustomerService';
 const SIGNALR_URL = `${Url}chathub`;
 const RECONNECT_DELAY = 3000;
 const MESSAGE_THROTTLE_DELAY = 1000;
@@ -23,13 +23,50 @@ const ChatWidget = () => {
   const messagesEndRef = useRef(null);
   const messagesRef = useRef(messages);
   const reconnectTimeoutRef = useRef(null);
+  const [customerId, setCustomerId] = useState(null);
+  const [customerLoading, setCustomerLoading] = useState(false);
 
-  const customerId = JwtUtils.getCurrentUserId();
+  useEffect(() => {
+    const fetchCustomerId = async () => {
+      try {
+        setCustomerLoading(true);
+        const userId = JwtUtils.getCurrentUserId();
+        
+        if (!userId) {
+          setError('Không tìm thấy thông tin người dùng');
+          return;
+        }
+
+        // Kiểm tra xem phương thức có trả về Promise không
+        const customerData = await customerservice.getCustomerByUserId(userId);
+        
+        if (customerData && customerData.customerId) {
+          setCustomerId(customerData.customerId);
+        } else {
+          setError('Không tìm thấy thông tin khách hàng');
+        }
+      } catch (err) {
+        console.error('Error fetching customer ID:', err);
+        setError('Không thể tải thông tin khách hàng');
+      } finally {
+        setCustomerLoading(false);
+      }
+    };
+
+    fetchCustomerId();
+  }, []);
 
   // Cập nhật messages ref
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
+
+  // Lắng nghe event mở chat từ bên ngoài (ví dụ nút "Liên Hệ Người Bán")
+  useEffect(() => {
+    const handleOpenChat = () => setOpen(true);
+    window.addEventListener('openChat', handleOpenChat);
+    return () => window.removeEventListener('openChat', handleOpenChat);
+  }, []);
 
   // Auto scroll
   useEffect(() => {

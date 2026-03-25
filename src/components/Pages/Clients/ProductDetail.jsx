@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import ProductService from '../../../Services/ProductService';
 import CartItemService from '../../../Services/CartItemService';
 import JwtUtils from '../../../constants/JwtUtils';
@@ -7,8 +7,10 @@ import { Url } from '../../../constants/config';
 
 const ProductDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [product, setProduct] = useState(null);
   const [adding, setAdding] = useState(false);
+  const [buyingNow, setBuyingNow] = useState(false);
   const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
@@ -38,6 +40,31 @@ const ProductDetail = () => {
       alert('Thêm vào giỏ hàng thất bại!');
     }
     setAdding(false);
+  };
+
+  const handleBuyNow = async () => {
+    if (quantity < 1) return;
+    setBuyingNow(true);
+    try {
+      const userId = JwtUtils.getCurrentUserId();
+      if (!userId) {
+        window.location.href = '/login';
+        return;
+      }
+      const res = await CartItemService.addCartItem(userId, { productId: product.productId, quantity });
+      // res có thể là cartItem hoặc array; lấy item vừa thêm
+      const cartItem = Array.isArray(res) ? res[res.length - 1] : res;
+      const selectedCartItems = [{
+        cartItemId: cartItem?.cartItemId || cartItem?.id,
+        productName: product.productName,
+        quantity,
+        lineTotal: product.sellingPrice * quantity,
+      }];
+      navigate('/checkout', { state: { selectedCartItems } });
+    } catch (error) {
+      alert('Không thể xử lý. Vui lòng thử lại!');
+    }
+    setBuyingNow(false);
   };
 
   const handleDecrease = () => {
@@ -86,26 +113,40 @@ const ProductDetail = () => {
                 <input
                   type="number"
                   min={1}
+                  max={product.quantity || 1}
                   value={quantity}
-                  onChange={e => setQuantity(Math.max(1, Number(e.target.value)))}
+                  onChange={e => setQuantity(
+                    Math.max(1, Math.min(Number(e.target.value), product.quantity || 1))
+                  )}
                   className="w-12 text-center border-l border-r outline-none"
                   style={{ WebkitAppearance: 'none', MozAppearance: 'textfield' }}
                 />
                 <button
-                  onClick={handleIncrease}
+                  onClick={() => setQuantity(q => Math.min(q + 1, product.quantity || 1))}
                   className="px-3 py-1 text-lg text-gray-600 hover:bg-gray-100"
                   type="button"
+                  disabled={quantity >= (product.quantity || 1)}
                 >+</button>
               </div>
+          
             </div>
           </div>
-          <button
-            onClick={handleAddToCart}
-            disabled={adding}
-            className="mt-6 px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition disabled:opacity-60"
-          >
-            {adding ? 'Đang thêm...' : 'Thêm vào giỏ hàng'}
-          </button>
+          <div className="mt-6 flex gap-3">
+            <button
+              onClick={handleAddToCart}
+              disabled={adding || buyingNow}
+              className="flex-1 px-6 py-2 border-2 border-blue-600 text-blue-600 rounded hover:bg-blue-50 transition disabled:opacity-60"
+            >
+              {adding ? 'Đang thêm...' : 'Thêm vào giỏ hàng'}
+            </button>
+            <button
+              onClick={handleBuyNow}
+              disabled={adding || buyingNow}
+              className="flex-1 px-6 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 transition disabled:opacity-60"
+            >
+              {buyingNow ? 'Đang xử lý...' : 'Mua ngay'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
