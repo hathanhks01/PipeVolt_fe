@@ -1,6 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import SalesOrderService from '../../../Services/SalesOrderService';
 
+const SALES_ORDER_STATUSES = [
+  { value: 'Pending', label: 'Chờ xử lý', color: '#f59e0b', bg: '#fffbeb' },
+  { value: 'Processing', label: 'Đang xử lý', color: '#3b82f6', bg: '#eff6ff' },
+  { value: 'Completed', label: 'Hoàn thành', color: '#10b981', bg: '#ecfdf5' },
+  { value: 'Cancelled', label: 'Đã hủy', color: '#ef4444', bg: '#fef2f2' },
+];
+
+const getStatusInfo = (value) => {
+  const found = SALES_ORDER_STATUSES.find(s => s.value === value);
+  return found || { label: value ?? '—', color: '#9ca3af', bg: '#f9fafb' };
+};
+
+const formatCurrency = (amount) => {
+  if (!amount && amount !== 0) return '—';
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+};
+
 const SalesOrder = () => {
     const [salesOrders, setSalesOrders] = useState([]);
     const [filteredSalesOrders, setFilteredSalesOrders] = useState([]);

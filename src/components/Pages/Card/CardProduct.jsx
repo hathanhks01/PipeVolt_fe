@@ -1,13 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Url } from '../../../constants/config.js';
 
 const CardProduct = ({ productId, name, image, description, sellingPrice }) => {
-  const imageUrl = `${Url}${image || ''}`;
+  const imageUrl = image ? `${Url}${image}` : null;
   const navigate = useNavigate();
+  const [imageError, setImageError] = useState(false);
 
   const handleCardClick = () => {
     navigate(`/products/${productId}`);
+  };
+
+  const handleImageError = () => {
+    setImageError(true);
   };
 
   return (
@@ -17,11 +22,18 @@ const CardProduct = ({ productId, name, image, description, sellingPrice }) => {
     >
       <div className="relative flex-1 flex justify-center items-center bg-gray-50 p-4">
         <div className="w-36 h-36 flex items-center justify-center">
-          <img
-            src={imageUrl}
-            alt="Product"
-            className="w-full h-full object-cover"
-          />
+          {imageError || !imageUrl ? (
+            <div className="w-full h-full flex items-center justify-center bg-gray-200 rounded">
+              <span className="text-center text-gray-500 text-xs">Không có ảnh</span>
+            </div>
+          ) : (
+            <img
+              src={imageUrl}
+              alt={name}
+              className="w-full h-full object-cover"
+              onError={handleImageError}
+            />
+          )}
         </div>
       </div>
       

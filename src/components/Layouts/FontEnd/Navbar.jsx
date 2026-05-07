@@ -25,6 +25,13 @@ const Navbar = () => {
   const toggleUserDropdown = () => setShowUserDropdown(!showUserDropdown);
   const isAdmin = JwtUtils.getCurrentUserType();
 
+  const handleCartClick = (e) => {
+    if (!isLoggedIn) {
+      e.preventDefault();
+      setShowLogin(true);
+    }
+  };
+
   useEffect(() => {
     checkAuthStatus();
   }, []);
@@ -287,12 +294,23 @@ const Navbar = () => {
                 </div>
 
                 {/* Cart */}
-                <Link to="/cart" className="relative group ml-4">
-                  <button className="hover:bg-gray-800 p-2 rounded-full group-hover:text-blue-400 transition-all duration-200">
+                {isLoggedIn ? (
+                  <Link to="/cart" className="relative group ml-4">
+                    <button className="hover:bg-gray-800 p-2 rounded-full group-hover:text-blue-400 transition-all duration-200">
+                      <ShoppingCart className="h-5 w-5" />
+                    </button>
+                    <span className="absolute -top-1 -right-1 bg-blue-500 text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center">0</span>
+                  </Link>
+                ) : (
+                  <button
+                    onClick={handleCartClick}
+                    className="relative group ml-4 hover:bg-gray-800 p-2 rounded-full group-hover:text-blue-400 transition-all duration-200"
+                    title="Vui lòng đăng nhập để xem giỏ hàng"
+                  >
                     <ShoppingCart className="h-5 w-5" />
+                    <span className="absolute -top-1 -right-1 bg-blue-500 text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center">0</span>
                   </button>
-                  <span className="absolute -top-1 -right-1 bg-blue-500 text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center">0</span>
-                </Link>
+                )}
               </div>
             </div>
 
@@ -358,7 +376,7 @@ const Navbar = () => {
               </NavLink>
             ))}
 
-            <Link to="/cart" className="flex items-center space-x-2 px-3 py-2 hover:bg-gray-700 transition-colors">
+            <Link to="/cart" className="flex items-center space-x-2 px-3 py-2 hover:bg-gray-700 transition-colors" onClick={isLoggedIn ? () => setIsMenuOpen(false) : handleCartClick}>
               <ShoppingCart className="h-5 w-5" />
               <span>Giỏ Hàng</span>
             </Link>
@@ -382,6 +400,24 @@ const Navbar = () => {
                   <Settings className="h-5 w-5" />
                   <span>Thông tin cá nhân</span>
                 </Link>
+                <Link
+                  to="/orders"
+                  className="flex items-center space-x-2 px-3 py-2 hover:bg-gray-700 transition-colors"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <FileText className="h-5 w-5" />
+                  <span>Đơn hàng của tôi</span>
+                </Link>
+                {(isAdmin == 0 || isAdmin == 1) && (
+                  <Link
+                    to="/admin/dashboard"
+                    className="flex items-center space-x-2 px-3 py-2 hover:bg-gray-700 transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Settings className="h-5 w-5" />
+                    <span>Trang quản trị</span>
+                  </Link>
+                )}
                 <button
                   onClick={() => {
                     handleLogout();

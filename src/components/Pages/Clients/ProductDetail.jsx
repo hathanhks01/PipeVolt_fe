@@ -4,6 +4,7 @@ import ProductService from '../../../Services/ProductService';
 import CartItemService from '../../../Services/CartItemService';
 import JwtUtils from '../../../constants/JwtUtils';
 import { Url } from '../../../constants/config';
+import Login from '../Auth/Login';
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -12,6 +13,8 @@ const ProductDetail = () => {
   const [adding, setAdding] = useState(false);
   const [buyingNow, setBuyingNow] = useState(false);
   const [quantity, setQuantity] = useState(1);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null); // 'addToCart' or 'buyNow'
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -27,13 +30,16 @@ const ProductDetail = () => {
 
   const handleAddToCart = async () => {
     if (quantity < 1) return;
+    
+    const userId = JwtUtils.getCurrentUserId();
+    if (!userId) {
+      setPendingAction('addToCart');
+      setShowLoginModal(true);
+      return;
+    }
+    
     setAdding(true);
     try {
-      const userId = JwtUtils.getCurrentUserId();
-      if (!userId) {
-        window.location.href = '/login';
-        return;
-      }
       await CartItemService.addCartItem(userId, { productId: product.productId, quantity });
       alert('Đã thêm vào giỏ hàng!');
     } catch (error) {
@@ -44,15 +50,17 @@ const ProductDetail = () => {
 
   const handleBuyNow = async () => {
     if (quantity < 1) return;
+    
+    const userId = JwtUtils.getCurrentUserId();
+    if (!userId) {
+      setPendingAction('buyNow');
+      setShowLoginModal(true);
+      return;
+    }
+    
     setBuyingNow(true);
     try {
-      const userId = JwtUtils.getCurrentUserId();
-      if (!userId) {
-        window.location.href = '/login';
-        return;
-      }
       const res = await CartItemService.addCartItem(userId, { productId: product.productId, quantity });
-      // res có thể là cartItem hoặc array; lấy item vừa thêm
       const cartItem = Array.isArray(res) ? res[res.length - 1] : res;
       const selectedCartItems = [{
         cartItemId: cartItem?.cartItemId || cartItem?.id,
@@ -73,6 +81,17 @@ const ProductDetail = () => {
 
   const handleIncrease = () => {
     setQuantity(q => q + 1);
+  };
+
+  const handleLoginSuccess = () => {
+    setShowLoginModal(false);
+    setPendingAction(null);
+    // Tự động thực hiện hành động pending sau khi đăng nhập
+    if (pendingAction === 'addToCart') {
+      setTimeout(() => handleAddToCart(), 100);
+    } else if (pendingAction === 'buyNow') {
+      setTimeout(() => handleBuyNow(), 100);
+    }
   };
 
   if (!product) {
@@ -149,6 +168,22 @@ const ProductDetail = () => {
           </div>
         </div>
       </div>
+
+      {/* Login Modal */}
+      {showLoginModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md relative">
+            <Login
+              isModal={true}
+              onClose={() => {
+                setShowLoginModal(false);
+                setPendingAction(null);
+              }}
+              onLoginSuccess={handleLoginSuccess}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

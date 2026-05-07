@@ -152,6 +152,57 @@ const ChatService = {
     } catch (error) {
       console.error('Error batch marking messages as read:', error);
     }
+  },
+
+  // === PRODUCT MESSAGE SUPPORT ===
+  // Gửi sản phẩm thông qua chat
+  sendProductMessage: async (chatRoomId, senderId, senderType, product) => {
+    try {
+      const messageDto = {
+        chatRoomId,
+        senderId,
+        senderType,
+        messageContent: `Sản phẩm: ${product.productName}`,
+        messageType: 1, // Product message type
+        productData: {
+          productId: product.productId,
+          productName: product.productName,
+          price: product.sellingPrice,
+          imageUrl: product.imageUrl,
+          quantity: product.quantity,
+          unit: product.unit,
+          productCode: product.productCode
+        }
+      };
+      const res = await http.post('Chat/messages', messageDto, {
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return res.data;
+    } catch (error) {
+      console.error('Error sending product message:', error);
+      throw error;
+    }
+  },
+
+  // Gửi link sản phẩm
+  sendProductLink: async (chatRoomId, senderId, senderType, productId, productName) => {
+    try {
+      const messageDto = {
+        chatRoomId,
+        senderId,
+        senderType,
+        messageContent: `Xem sản phẩm: ${productName}`,
+        messageType: 2, // Link message type
+        attachmentUrl: `/products/${productId}`
+      };
+      const res = await http.post('Chat/messages', messageDto, {
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return res.data;
+    } catch (error) {
+      console.error('Error sending product link:', error);
+      throw error;
+    }
   }
 };
 
