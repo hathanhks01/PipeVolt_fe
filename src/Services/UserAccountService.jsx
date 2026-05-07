@@ -53,16 +53,16 @@ const UserAccountService = {
     }
   },
 
-  // Lấy tài khoản theo username
-  getUserAccountByUsername: async (username) => {
-    try {
-      const response = await http.get(`useraccounts/username/${username}`);
-      return response.data;
-    } catch (error) {
-      console.error(`Error fetching user account with username ${username}:`, error);
-      throw error;
-    }
-  },
+  // // Lấy tài khoản theo username
+  // getUserAccountByUsername: async (username) => {
+  //   try {
+  //     const response = await http.get(`useraccounts/username/${username}`);
+  //     return response.data;
+  //   } catch (error) {
+  //     console.error(`Error fetching user account with username ${username}:`, error);
+  //     throw error;
+  //   }
+  // },
 
   // Xóa tài khoản
   deleteUserAccount: async (id) => {
