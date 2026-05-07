@@ -1,13 +1,13 @@
 import axios from 'axios';
 
 const http = axios.create({
-  baseURL: 'http://localhost:3030/api', 
+  baseURL: 'https://worrisome-abdominal-barrier.ngrok-free.dev/api',
   headers: {
     'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true',   // ← thêm dòng này
   },
 });
 
-// Thêm interceptor để tự động đính kèm Authorization header nếu có token
 http.interceptors.request.use(
   (config) => {
     const token = sessionStorage.getItem('authToken');
