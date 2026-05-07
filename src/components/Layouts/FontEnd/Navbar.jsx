@@ -187,7 +187,7 @@ const Navbar = () => {
     </Link>
       {(isAdmin == 0 || isAdmin == 1) && (
         <Link
-          to="/admin/dashboard"
+          to="/admin/Products"
           className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
           onClick={() => setShowUserDropdown(false)}
         >
