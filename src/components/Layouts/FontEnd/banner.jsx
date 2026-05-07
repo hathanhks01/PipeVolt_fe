@@ -3,8 +3,7 @@ import React from 'react'
 const Banner = () => {
   return (
     <div>
-        <img src="/images/banner.png" alt="" className='w-full h-auto object-cover'/>
-    </div>
+<     img src="/assets/images/banner.png" alt="banner" className="w-full h-auto object-cover"/>    </div>
   )
 }
 
