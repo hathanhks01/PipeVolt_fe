@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import UserAccountService from '../../../services/UserAccountService';
+import UserAccountService from '../../../Services/UserAccountService';
 
 const UserAccount = () => {
     const [userAccounts, setUserAccounts] = useState([]);
