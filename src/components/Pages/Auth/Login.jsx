@@ -57,6 +57,7 @@ const Login = ({ isModal = false, onClose, onLoginSuccess }) => {
           userId: response.userId
         };
         sessionStorage.setItem('userInfo', JSON.stringify(userObj));
+        window.dispatchEvent(new Event('authChanged'));
 
         if (rememberMe) {
           sessionStorage.setItem('savedUserName', userName);
@@ -77,7 +78,7 @@ const Login = ({ isModal = false, onClose, onLoginSuccess }) => {
 
         var checkAccess = JwtUtils.getCurrentUserType();
         if (checkAccess != null && checkAccess == 0) {
-          navigate('/admin/dashboard');
+          navigate('/admin/products');
         } else {
           navigate('/');
         }
@@ -270,6 +271,7 @@ const Login = ({ isModal = false, onClose, onLoginSuccess }) => {
                     userId: response.userId
                   };
                   sessionStorage.setItem('userInfo', JSON.stringify(userObj));
+                  window.dispatchEvent(new Event('authChanged'));
 
                   if (rememberMe) {
                     sessionStorage.setItem('savedUserName', userName);
@@ -289,7 +291,7 @@ const Login = ({ isModal = false, onClose, onLoginSuccess }) => {
 
                   var checkAccess = JwtUtils.getCurrentUserType();
                   if (checkAccess != null && checkAccess == 0) {
-                    navigate('/admin/dashboard');
+                    navigate('/admin/products');
                   } else {
                     navigate('/');
                   }

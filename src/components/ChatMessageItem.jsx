@@ -1,14 +1,26 @@
 import React from 'react';
+import { Check, CheckCheck, Package, Link as LinkIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { MessageCircle, Package, Link as LinkIcon, Image as ImageIcon, Check, CheckCheck } from 'lucide-react';
 import { Url } from '../constants/config';
 
 const ChatMessageItem = ({ message, isOwn }) => {
-  const renderMessageContent = () => {
+  const formatTime = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      return new Date(dateStr).toLocaleTimeString('vi-VN', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return '';
+    }
+  };
+
+  const renderContent = () => {
     switch (message.messageType) {
-      case 1: // Product message
+      case 1: // Product card
         return message.productData ? (
-          <div className="max-w-xs bg-gray-50 rounded-lg overflow-hidden border border-gray-200">
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
             {message.productData.imageUrl && (
               <img
                 src={`${Url}${message.productData.imageUrl}`}
@@ -18,31 +30,20 @@ const ChatMessageItem = ({ message, isOwn }) => {
               />
             )}
             <div className="p-3">
-              <Link
-                to={`/products/${message.productData.productId}`}
-                className="block text-sm font-semibold text-blue-600 hover:text-blue-700 truncate"
-              >
+              <div className="text-sm font-semibold text-gray-900 truncate">
                 {message.productData.productName}
-              </Link>
+              </div>
               <div className="text-sm text-gray-600 mt-1">
                 {message.productData.price?.toLocaleString('vi-VN')}đ
               </div>
               {message.productData.unit && (
-                <div className="text-xs text-gray-500 mt-1">
-                  / {message.productData.unit}
-                </div>
+                <div className="text-xs text-gray-500 mt-1">/{message.productData.unit}</div>
               )}
-              {message.productData.quantity !== undefined && (
-                <div className="text-xs text-gray-500 mt-1">
-                  Còn: {message.productData.quantity}
-                </div>
-              )}
-              <button
-                onClick={() => window.location.href = `/products/${message.productData.productId}`}
-                className="mt-2 w-full bg-blue-600 text-white text-xs py-1 rounded hover:bg-blue-700 transition"
-              >
-                Xem Chi Tiết
-              </button>
+              <div className="mt-2">
+                <Link to={`/products/${message.productData.productId}`} className="text-blue-600 text-xs font-medium hover:underline">
+                  Xem chi tiết
+                </Link>
+              </div>
             </div>
           </div>
         ) : (
@@ -52,72 +53,42 @@ const ChatMessageItem = ({ message, isOwn }) => {
           </div>
         );
 
-      case 2: // Link message
+      case 2:
         return (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 text-blue-600">
             <LinkIcon className="h-4 w-4" />
-            <Link
-              to={message.attachmentUrl || '#'}
-              className="text-blue-600 hover:underline text-sm"
-            >
+            <Link to={message.attachmentUrl || '#'} className="text-sm hover:underline">
               {message.messageContent}
             </Link>
           </div>
         );
 
-      case 3: // Image message
+      case 3:
         return (
           <div className="max-w-xs">
             <img
               src={message.attachmentUrl}
-              alt="Sent image"
+              alt="Image message"
               className="rounded-lg max-w-full"
               onError={(e) => { e.target.src = '/no-image.png'; }}
             />
           </div>
         );
 
-      default: // Text message
-        return (
-          <p className="break-words">{message.messageContent}</p>
-        );
+      default:
+        return <p className="break-words">{message.messageContent}</p>;
     }
   };
 
   return (
-    <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} mb-2`}>
-      <div className={`flex gap-2 items-end max-w-xs`}>
-        {!isOwn && (
-          <div className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center text-xs flex-shrink-0">
-            {message.senderName?.charAt(0)}
-          </div>
-        )}
-        <div>
-          {!isOwn && (
-            <div className="text-xs text-gray-500 mb-1 px-2">
-              {message.senderName}
-            </div>
-          )}
-          <div
-            className={`px-3 py-2 rounded-lg ${
-              isOwn
-                ? 'bg-blue-500 text-white rounded-br-none'
-                : 'bg-gray-100 text-gray-800 rounded-bl-none'
-            }`}
-          >
-            {renderMessageContent()}
-            <div className={`text-xs mt-1 flex items-center gap-1 ${isOwn ? 'text-blue-100' : 'text-gray-500'}`}>
-              <span>{new Date(message.sentAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
-              {isOwn && (
-                <>
-                  {message.isRead ? (
-                    <CheckCheck className="h-3 w-3" />
-                  ) : (
-                    <Check className="h-3 w-3" />
-                  )}
-                </>
-              )}
-            </div>
+    <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} mb-3`}>
+      <div className={`max-w-[80%] ${isOwn ? 'text-white' : 'text-gray-900'}`}>
+        {!isOwn && message.senderName && <div className="text-xs text-gray-500 mb-1">{message.senderName}</div>}
+        <div className={`rounded-3xl px-4 py-3 shadow-sm ${isOwn ? 'bg-blue-600 rounded-br-none' : 'bg-gray-100 rounded-bl-none'}`}>
+          {renderContent()}
+          <div className={`mt-2 flex items-center gap-2 text-[11px] ${isOwn ? 'text-blue-100' : 'text-gray-500'}`}>
+            <span>{formatTime(message.sentAt)}</span>
+            {isOwn && (message.isRead ? <CheckCheck className="h-3 w-3" /> : <Check className="h-3 w-3" />)}
           </div>
         </div>
       </div>

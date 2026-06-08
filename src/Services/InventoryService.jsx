@@ -33,11 +33,11 @@ getInventoriesByWarehouseCode: async (warehouseCode) => {
       throw error;
     }
   },
- receiveFromPurchaseOrder: async (warehouseCode, purchaseOrderId) => {
+ receiveFromPurchaseOrder: async (warehouseCode, purchaseOrderCode) => {
   try {
     const response = await http.post('Inventories/ReceiveFromPurchaseOrder', {
       warehouseCode,
-      purchaseOrderId,
+      purchaseOrderCode,
     });
     return response.data;
   } catch (error) {

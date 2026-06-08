@@ -1,124 +1,85 @@
 import http from '../common/http-common';
 
 const ChatService = {
-  // Tạo phòng chat (nếu chưa có)
-  createChatRoom: async (customerId) => {
-    try {
-      const res = await http.post('Chat/rooms', { customerId }, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      return res.data;
-    } catch (error) {
-      console.error('Error creating chat room:', error);
-      throw error;
-    }
+  // ── ROOM MANAGEMENT ──────────────────────────────────────────
+
+  /** Tạo hoặc reopen phòng chat cho customer */
+  createChatRoom: async (customerId, employeeId = null, roomName = null) => {
+    const res = await http.post('Chat/rooms', { customerId, employeeId, roomName });
+    return res.data;
   },
 
-  // Lấy phòng chat của customer
+  /** Lấy tất cả phòng chat của customer */
   getChatRoomsForCustomer: async (customerId) => {
-    try {
-      const res = await http.get(`Chat/rooms/customer/${customerId}`);
-      return res.data;
-    } catch (error) {
-      console.error('Error getting customer chat rooms:', error);
-      throw error;
-    }
+    const res = await http.get(`Chat/rooms/customer/${customerId}`);
+    return res.data;
   },
 
-  // Lấy phòng chat của employee
+  /** Lấy tất cả phòng chat của employee */
   getChatRoomsForEmployee: async (employeeId) => {
-    try {
-      const res = await http.get(`Chat/rooms/employee/${employeeId}`);
-      return res.data;
-    } catch (error) {
-      console.error('Error getting employee chat rooms:', error);
-      throw error;
-    }
+    const res = await http.get(`Chat/rooms/employee/${employeeId}`);
+    return res.data;
   },
 
-  // Lấy tin nhắn trong phòng chat
+  /** Lấy tất cả phòng chat (admin view) */
+  getAllChatRooms: async () => {
+    const res = await http.get('Chat/rooms');
+    return res.data;
+  },
+
+  /** Lấy thông tin 1 phòng chat */
+  getChatRoomById: async (chatRoomId) => {
+    const res = await http.get('Chat/rooms');
+    const rooms = res.data || [];
+    return rooms.find((r) => r.chatRoomId === chatRoomId) || null;
+  },
+
+  /** Gán employee vào phòng chat */
+  assignEmployee: async (chatRoomId, employeeId) => {
+    const res = await http.put(`Chat/rooms/${chatRoomId}/assign`, employeeId);
+    return res.data;
+  },
+
+  /** Đóng phòng chat */
+  closeChatRoom: async (chatRoomId) => {
+    const res = await http.put(`Chat/rooms/${chatRoomId}/close`);
+    return res.data;
+  },
+
+  // ── MESSAGE MANAGEMENT ───────────────────────────────────────
+
+  /** Lấy tin nhắn trong phòng (phân trang) */
   getMessages: async (chatRoomId, page = 1, pageSize = 50) => {
-    try {
-      const res = await http.get(`Chat/rooms/${chatRoomId}/messages?page=${page}&pageSize=${pageSize}`);
-      return res.data;
-    } catch (error) {
-      console.error(`Error getting messages for chat room ${chatRoomId}:`, error);
-      throw error;
-    }
+    const res = await http.get(`Chat/rooms/${chatRoomId}/messages?page=${page}&pageSize=${pageSize}`);
+    return res.data;
   },
 
-  // Gửi tin nhắn
+  /**
+   * Gửi tin nhắn
+   * @param {Object} messageDto - { chatRoomId, senderId, senderType, messageContent, messageType, attachmentUrl }
+   * senderType: 1=Employee, 2=Customer
+   */
   sendMessage: async (messageDto) => {
-    try {
-      const res = await http.post('Chat/messages', messageDto, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      return res.data;
-    } catch (error) {
-      console.error('Error sending message:', error);
-      throw error;
-    }
+    const res = await http.post('Chat/messages', messageDto);
+    return res.data;
   },
 
   // Đánh dấu 1 tin nhắn là đã đọc
   markMessageAsRead: async (messageId) => {
-    try {
-      const res = await http.put(`Chat/messages/${messageId}/read`);
-      return res.data;
-    } catch (error) {
-      console.error('Error marking message as read:', error);
-      throw error;
-    }
+    const res = await http.put(`Chat/messages/${messageId}/read`);
+    return res.data;
   },
 
-  // Đánh dấu tất cả tin nhắn trong phòng là đã đọc cho 1 user
+  // Đánh dấu tất cả tin nhắn trong phòng đã đọc
   markAllMessagesAsRead: async (chatRoomId, userId, userType) => {
-    try {
-      const res = await http.put(`Chat/rooms/${chatRoomId}/read-all?userId=${userId}&userType=${userType}`);
-      return res.data;
-    } catch (error) {
-      console.error('Error marking all messages as read:', error);
-      throw error;
-    }
+    const res = await http.put(`Chat/rooms/${chatRoomId}/read-all?userId=${userId}&userType=${userType}`);
+    return res.data;
   },
 
-  // Lấy số lượng tin nhắn chưa đọc trong phòng chat cho 1 user
-  getUnreadMessageCount: async (chatRoomId, userId, userType) => {
-    try {
-      const res = await http.get(`Chat/rooms/${chatRoomId}/unread-count?userId=${userId}&userType=${userType}`);
-      return res.data;
-    } catch (error) {
-      console.error('Error getting unread message count:', error);
-      throw error;
-    }
-  },
-
-  // Gán nhân viên vào phòng chat
-  assignEmployeeToChat: async (chatRoomId, employeeId) => {
-    try {
-      const res = await http.put(`Chat/rooms/${chatRoomId}/assign`, employeeId, {
-        headers: { 'Content-Type': 'application/json' }
-      });
-      return res.data;
-    } catch (error) {
-      console.error('Error assigning employee to chat:', error);
-      throw error;
-    }
-  },
-
-  // Đóng phòng chat
-  closeChatRoom: async (chatRoomId) => {
-    try {
-      const res = await http.put(`Chat/rooms/${chatRoomId}/close`);
-      return res.data;
-    } catch (error) {
-      console.error('Error closing chat room:', error);
-      throw error;
-    }
+  // Lấy số tin nhắn chưa đọc
+  getUnreadCount: async (chatRoomId, userId, userType) => {
+    const res = await http.get(`Chat/rooms/${chatRoomId}/unread-count?userId=${userId}&userType=${userType}`);
+    return res.data;
   },
 
   // === HELPER FUNCTIONS FOR READ STATUS MANAGEMENT ===

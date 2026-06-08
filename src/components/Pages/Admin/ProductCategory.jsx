@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ProductCategoryService from '../../../Services/ProductCategoryService';
+import { showAlert } from '../../../common/ui';
 import { Url } from '../../../constants/config.js';
 
 const ProductCategory = () => {
@@ -39,7 +40,7 @@ const ProductCategory = () => {
             setFilteredCategories(response.data || []);
         } catch (error) {
             console.error('Error fetching categories:', error);
-            alert('Không thể tải danh sách danh mục sản phẩm. Vui lòng thử lại.');
+            showAlert('Không thể tải danh sách danh mục sản phẩm. Vui lòng thử lại.', 'error');
         }
     };
 
@@ -69,13 +70,13 @@ const ProductCategory = () => {
             // Kiểm tra định dạng file
             const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
             if (!allowedTypes.includes(file.type)) {
-                alert('Chỉ chấp nhận file ảnh định dạng JPG, JPEG, PNG, GIF');
+                showAlert('Chỉ chấp nhận file ảnh định dạng JPG, JPEG, PNG, GIF', 'error');
                 return;
             }
 
             // Kiểm tra kích thước file (5MB)
             if (file.size > 5 * 1024 * 1024) {
-                alert('Kích thước file không được vượt quá 5MB');
+                showAlert('Kích thước file không được vượt quá 5MB', 'error');
                 return;
             }
 
@@ -111,10 +112,10 @@ const ProductCategory = () => {
             setShowAddModal(false);
             resetForm();
             fetchCategories();
-            alert('Thêm danh mục sản phẩm thành công!');
+            showAlert('Thêm danh mục sản phẩm thành công!', 'success');
         } catch (error) {
             console.error('Error adding category:', error);
-            alert(`Không thể thêm danh mục sản phẩm: ${error.response?.data?.message || error.message}`);
+            showAlert(`Không thể thêm danh mục sản phẩm: ${error.response?.data?.message || error.message}`, 'error');
         }
     };
 
@@ -132,10 +133,10 @@ const ProductCategory = () => {
             setShowEditModal(false);
             resetForm();
             fetchCategories();
-            alert('Cập nhật danh mục sản phẩm thành công!');
+            showAlert('Cập nhật danh mục sản phẩm thành công!', 'success');
         } catch (error) {
             console.error('Error updating category:', error);
-            alert(`Không thể cập nhật danh mục sản phẩm: ${error.response?.data?.message || error.message}`);
+            showAlert(`Không thể cập nhật danh mục sản phẩm: ${error.response?.data?.message || error.message}`, 'error');
         }
     };
 
@@ -144,10 +145,10 @@ const ProductCategory = () => {
             await ProductCategoryService.deleteCategory(currentCategory.categoryId);
             setShowDeleteModal(false);
             fetchCategories();
-            alert('Xóa danh mục sản phẩm thành công!');
+            showAlert('Xóa danh mục sản phẩm thành công!', 'success');
         } catch (error) {
             console.error('Error deleting category:', error);
-            alert(`Không thể xóa danh mục sản phẩm: ${error.response?.data?.message || error.message}`);
+            showAlert(`Không thể xóa danh mục sản phẩm: ${error.response?.data?.message || error.message}`, 'error');
         }
     };
 
@@ -187,7 +188,14 @@ const ProductCategory = () => {
     };
 
     return (
-        <div className="p-4">
+        <div className="p-4" style={{ fontFamily: "'Be Vietnam Pro', 'Segoe UI', sans-serif" }}>
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap');
+                .admin-table tr:hover td { background: #f0f9ff !important; }
+                .action-btn { background: none; border: none; cursor: pointer; font-size: 13px; font-weight: 600; padding: 5px 10px; border-radius: 6px; transition: background 0.15s; }
+                .action-btn.edit { color: #3b82f6; } .action-btn.edit:hover { background: #eff6ff; }
+                .action-btn.delete { color: #ef4444; } .action-btn.delete:hover { background: #fef2f2; }
+            `}</style>
             <div className="flex justify-between items-center mb-4">
                 <h1 className="text-2xl font-bold">Danh sách danh mục sản phẩm</h1>
                 <button
@@ -208,64 +216,66 @@ const ProductCategory = () => {
                 />
             </div>
 
-            <div className="overflow-x-auto">
-                <table className="min-w-full bg-white border border-gray-300">
+            <div style={{ background: '#fff', borderRadius: '14px', border: '1.5px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+                <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
-                        <tr className="bg-gray-100">
-                            <th className="py-2 px-4 border">#</th>
-                            <th className="py-2 px-4 border">Mã danh mục</th>
-                            <th className="py-2 px-4 border">Ảnh</th>
-                            <th className="py-2 px-4 border">Tên danh mục</th>
-                            <th className="py-2 px-4 border">Mô tả</th>
-                            <th className="py-2 px-4 border">Thao tác</th>
+                        <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                            {['#', 'Mã danh mục', 'Ảnh', 'Tên danh mục', 'Mô tả', 'Thao tác'].map(h => (
+                                <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
+                                    {h}
+                                </th>
+                            ))}
                         </tr>
                     </thead>
                     <tbody>
                         {currentItems && currentItems.length > 0 ? (
                             currentItems.map((item, index) => (
-                                <tr key={item.categoryId || index} className="hover:bg-gray-50">
-                                    <td className="py-2 px-4 border text-center">{indexOfFirstItem + index + 1}</td>
-                                    <td className="py-2 px-4 border text-center">{item.categoryId}</td>
-                                    <td className="py-2 px-4 border text-center">
+                                <tr key={item.categoryId || index} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                    <td style={{ padding: '13px 16px', color: '#475569', fontSize: '14px' }}>{indexOfFirstItem + index + 1}</td>
+                                    <td style={{ padding: '13px 16px' }}>
+                                        <span style={{ fontWeight: '600', color: '#1e293b', fontFamily: 'monospace', fontSize: '13px', background: '#f1f5f9', padding: '3px 8px', borderRadius: '6px' }}>
+                                            #{item.categoryId}
+                                        </span>
+                                    </td>
+                                    <td style={{ padding: '13px 16px' }}>
                                         {item.imageUrl ? (
-                                            <img 
-                                                src={Url+item.imageUrl} 
+                                            <img
+                                                src={Url + item.imageUrl}
                                                 alt={item.categoryName}
-                                                className="w-12 h-12 object-cover rounded mx-auto"
+                                                className="w-12 h-12 object-cover rounded border"
                                             />
                                         ) : (
-                                            <div className="w-12 h-12 bg-gray-200 rounded mx-auto flex items-center justify-center">
+                                            <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center border">
                                                 <span className="text-gray-400 text-xs">No Image</span>
                                             </div>
                                         )}
                                     </td>
-                                    <td className="py-2 px-4 border">{item.categoryName || 'N/A'}</td>
-                                    <td className="py-2 px-4 border">
+                                    <td style={{ padding: '13px 16px', color: '#334155', fontSize: '14px', fontWeight: '600' }}>{item.categoryName || 'N/A'}</td>
+                                    <td style={{ padding: '13px 16px', color: '#475569', fontSize: '14px' }}>
                                         <div className="max-w-xs truncate" title={item.description}>
                                             {item.description || 'N/A'}
                                         </div>
                                     </td>
-                                    <td className="py-2 px-4 border">
-                                        <div className="flex space-x-2 justify-center">
-                                            <button
-                                                onClick={() => openEditModal(item)}
-                                                className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 text-sm"
-                                            >
-                                                Sửa
-                                            </button>
-                                            <button
-                                                onClick={() => openDeleteModal(item)}
-                                                className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-sm"
-                                            >
-                                                Xóa
-                                            </button>
-                                        </div>
+                                    <td style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
+                                        <button
+                                            onClick={() => openEditModal(item)}
+                                            className="action-btn edit"
+                                            style={{ marginRight: '4px' }}
+                                        >
+                                            ✏️ Sửa
+                                        </button>
+                                        <button
+                                            onClick={() => openDeleteModal(item)}
+                                            className="action-btn delete"
+                                        >
+                                            🗑️ Xóa
+                                        </button>
                                     </td>
                                 </tr>
                             ))
                         ) : (
                             <tr>
-                                <td colSpan="6" className="py-8 px-4 text-center text-gray-500">
+                                <td colSpan="6" style={{ textAlign: 'center', padding: '24px', color: '#94a3b8', fontSize: '15px' }}>
                                     {searchTerm ? 'Không tìm thấy danh mục nào phù hợp' : 'Chưa có danh mục nào'}
                                 </td>
                             </tr>
@@ -280,11 +290,10 @@ const ProductCategory = () => {
                     <button
                         onClick={() => handlePageChange(currentPage - 1)}
                         disabled={currentPage === 1}
-                        className={`px-4 py-2 rounded-lg border transition-colors ${
-                            currentPage === 1
+                        className={`px-4 py-2 rounded-lg border transition-colors ${currentPage === 1
                                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                 : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                        }`}
+                            }`}
                     >
                         Trước
                     </button>
@@ -301,11 +310,10 @@ const ProductCategory = () => {
                                     <button
                                         key={page}
                                         onClick={() => handlePageChange(page)}
-                                        className={`px-3 py-2 rounded-lg transition-colors ${
-                                            isCurrentPage
+                                        className={`px-3 py-2 rounded-lg transition-colors ${isCurrentPage
                                                 ? 'bg-blue-600 text-white'
                                                 : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                                        }`}
+                                            }`}
                                     >
                                         {page}
                                     </button>
@@ -327,11 +335,10 @@ const ProductCategory = () => {
                     <button
                         onClick={() => handlePageChange(currentPage + 1)}
                         disabled={currentPage === totalPages}
-                        className={`px-4 py-2 rounded-lg border transition-colors ${
-                            currentPage === totalPages
+                        className={`px-4 py-2 rounded-lg border transition-colors ${currentPage === totalPages
                                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                 : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                        }`}
+                            }`}
                     >
                         Sau
                     </button>
@@ -367,12 +374,12 @@ const ProductCategory = () => {
                                     className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                                 <p className="text-sm text-gray-500 mt-1">Chấp nhận file JPG, PNG, GIF. Tối đa 5MB</p>
-                                
+
                                 {imagePreview && (
                                     <div className="mt-2">
-                                        <img 
-                                            src={imagePreview} 
-                                            alt="Preview" 
+                                        <img
+                                            src={imagePreview}
+                                            alt="Preview"
                                             className="w-24 h-24 object-cover rounded border"
                                         />
                                     </div>
@@ -445,13 +452,13 @@ const ProductCategory = () => {
                                     className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                                 <p className="text-sm text-gray-500 mt-1">Chấp nhận file JPG, PNG, GIF. Tối đa 5MB</p>
-                                
+
                                 {imagePreview && (
                                     <div className="mt-2">
                                         <p className="text-sm font-medium mb-1">Ảnh hiện tại:</p>
-                                        <img 
-                                            src={imagePreview} 
-                                            alt="Current" 
+                                        <img
+                                            src={imagePreview}
+                                            alt="Current"
                                             className="w-24 h-24 object-cover rounded border"
                                         />
                                     </div>
@@ -502,8 +509,8 @@ const ProductCategory = () => {
                         <h2 className="text-xl font-bold mb-4">Xác nhận xóa</h2>
                         <div className="mb-4">
                             {currentCategory.imageUrl && (
-                                <img 
-                                    src={currentCategory.imageUrl} 
+                                <img
+                                    src={currentCategory.imageUrl}
                                     alt={currentCategory.categoryName}
                                     className="w-16 h-16 object-cover rounded mx-auto mb-2"
                                 />

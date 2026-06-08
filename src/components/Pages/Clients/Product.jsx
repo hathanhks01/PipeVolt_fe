@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import CardProduct from '../Card/CardProduct';
 import ProductsService from '../../../Services/ProductService';
-import CartItemService from '../../../Services/CartItemService';
+import CartService from '../../../Services/CartService';
 import JwtUtils from '../../../constants/JwtUtils';
 import CardCategory from '../Card/cardCategory'; 
 import ProductCategoryService from '../../../Services/ProductCategoryService';
@@ -51,11 +51,12 @@ const Product = () => {
         productId,
         quantity: 1,
       };
-      const idUser = JwtUtils.getCurrentUserId();
-      if (!idUser) {
-        window.location.href = '/login';
+      const customerId = JwtUtils.getCurrentCustomerId();
+      if (!customerId) {
+        window.dispatchEvent(new Event('openLogin'));
+        return;
       }
-      await CartItemService.addCartItem(idUser, itemData);
+      await CartService.addItemToCart(customerId, itemData);
       alert('Đã thêm vào giỏ hàng!');
     } catch (error) {
       console.error('Lỗi khi thêm sản phẩm vào giỏ hàng:', error);

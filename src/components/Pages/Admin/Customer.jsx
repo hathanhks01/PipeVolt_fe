@@ -9,7 +9,7 @@ const Customer = () => {
     const [showEditModal, setShowEditModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
-    const [pageSize] = useState(20); 
+    const [pageSize] = useState(20);
     const [currentCustomer, setCurrentCustomer] = useState({
         customerId: null,
         customerCode: '',
@@ -148,7 +148,14 @@ const Customer = () => {
     };
 
     return (
-        <div className="p-4">
+        <div className="p-4" style={{ fontFamily: "'Be Vietnam Pro', 'Segoe UI', sans-serif" }}>
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap');
+                .admin-table tr:hover td { background: #f0f9ff !important; }
+                .action-btn { background: none; border: none; cursor: pointer; font-size: 13px; font-weight: 600; padding: 5px 10px; border-radius: 6px; transition: background 0.15s; }
+                .action-btn.edit { color: #3b82f6; } .action-btn.edit:hover { background: #eff6ff; }
+                .action-btn.delete { color: #ef4444; } .action-btn.delete:hover { background: #fef2f2; }
+            `}</style>
             <div className="flex justify-between items-center mb-4">
                 <h1 className="text-2xl font-bold">Danh sách khách hàng</h1>
                 <button
@@ -169,51 +176,52 @@ const Customer = () => {
                 />
             </div>
 
-            <table className="min-w-full bg-white border border-gray-300">
-                <thead>
-                    <tr className="bg-gray-100">
-                        <th className="py-2 px-4 border">#</th>
-                        <th className="py-2 px-4 border">Mã khách hàng</th>
-                        <th className="py-2 px-4 border">Tên khách hàng</th>
-                        <th className="py-2 px-4 border">Địa chỉ</th>
-                        <th className="py-2 px-4 border">Số điện thoại</th>
-                        <th className="py-2 px-4 border">Email</th>
-                        <th className="py-2 px-4 border">Ngày đăng ký</th>
-                        <th className="py-2 px-4 border">Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {currentItems.map((item, index) => (
-                        <tr key={item.customerId || index} className="hover:bg-gray-50">
-                            <td className="py-2 px-4 border">{indexOfFirstItem + index + 1}</td>
-                            <td className="py-2 px-4 border">{item.customerCode || 'N/A'}</td>
-                            <td className="py-2 px-4 border">{item.customerName || 'N/A'}</td>
-                            <td className="py-2 px-4 border">{item.address || 'N/A'}</td>
-                            <td className="py-2 px-4 border">{item.phone || 'N/A'}</td>
-                            <td className="py-2 px-4 border">{item.email || 'N/A'}</td>
-                            <td className="py-2 px-4 border">
-                                {item.registrationDate ? new Date(item.registrationDate).toLocaleDateString() : 'N/A'}
-                            </td>
-                            <td className="py-2 px-4 border">
-                                <div className="flex space-x-2">
+            <div style={{ background: '#fff', borderRadius: '14px', border: '1.5px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+                <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                        <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                            {['#', 'Mã khách hàng', 'Tên khách hàng', 'Địa chỉ', 'Số điện thoại', 'Email', 'Ngày đăng ký', 'Thao tác'].map(h => (
+                                <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
+                                    {h}
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {currentItems.map((item, index) => (
+                            <tr key={item.customerId || index} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                <td style={{ padding: '13px 16px', color: '#475569', fontSize: '14px' }}>{indexOfFirstItem + index + 1}</td>
+                                <td style={{ padding: '13px 16px' }}>
+                                    <span style={{ fontWeight: '600', color: '#1e293b', fontFamily: 'monospace', fontSize: '13px', background: '#f1f5f9', padding: '3px 8px', borderRadius: '6px' }}>
+                                        {item.customerCode || 'N/A'}
+                                    </span>
+                                </td>
+                                <td style={{ padding: '13px 16px', color: '#334155', fontSize: '14px', fontWeight: '600' }}>{item.customerName || 'N/A'}</td>
+                                <td style={{ padding: '13px 16px', color: '#475569', fontSize: '14px' }}>{item.address || 'N/A'}</td>
+                                <td style={{ padding: '13px 16px', color: '#475569', fontSize: '14px' }}>{item.phone || 'N/A'}</td>
+                                <td style={{ padding: '13px 16px', color: '#475569', fontSize: '14px' }}>{item.email || 'N/A'}</td>
+                                <td style={{ padding: '13px 16px', color: '#475569', fontSize: '14px' }}>
+                                    {item.registrationDate ? new Date(item.registrationDate).toLocaleDateString() : 'N/A'}
+                                </td>
+                                <td style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
                                     <button
                                         onClick={() => openEditModal(item)}
-                                        className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
+                                        className="action-btn edit"
                                     >
-                                        Sửa
+                                        ✏️ Sửa
                                     </button>
                                     <button
                                         onClick={() => openDeleteModal(item)}
-                                        className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                                        className="action-btn delete"
                                     >
-                                        Xóa
+                                        🗑️ Xóa
                                     </button>
-                                </div>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
 
             {/* Pagination */}
             {totalPages > 1 && (
@@ -221,11 +229,10 @@ const Customer = () => {
                     <button
                         onClick={() => handlePageChange(currentPage - 1)}
                         disabled={currentPage === 1}
-                        className={`px-4 py-2 rounded-lg border transition-colors ${
-                            currentPage === 1
+                        className={`px-4 py-2 rounded-lg border transition-colors ${currentPage === 1
                                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                 : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                        }`}
+                            }`}
                     >
                         Trước
                     </button>
@@ -242,11 +249,10 @@ const Customer = () => {
                                     <button
                                         key={page}
                                         onClick={() => handlePageChange(page)}
-                                        className={`px-3 py-2 rounded-lg transition-colors ${
-                                            isCurrentPage
+                                        className={`px-3 py-2 rounded-lg transition-colors ${isCurrentPage
                                                 ? 'bg-blue-600 text-white'
                                                 : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                                        }`}
+                                            }`}
                                     >
                                         {page}
                                     </button>
@@ -268,11 +274,10 @@ const Customer = () => {
                     <button
                         onClick={() => handlePageChange(currentPage + 1)}
                         disabled={currentPage === totalPages}
-                        className={`px-4 py-2 rounded-lg border transition-colors ${
-                            currentPage === totalPages
+                        className={`px-4 py-2 rounded-lg border transition-colors ${currentPage === totalPages
                                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                 : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                        }`}
+                            }`}
                     >
                         Sau
                     </button>

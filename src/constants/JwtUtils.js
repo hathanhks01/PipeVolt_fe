@@ -2,13 +2,12 @@ import { jwtDecode } from 'jwt-decode';
 
 const JwtUtils = {
   getToken() {
-    return sessionStorage.getItem('authToken'); 
+    return sessionStorage.getItem('authToken');
   },
 
   getDecodedToken() {
     const token = this.getToken();
     if (!token) return null;
-
     try {
       return jwtDecode(token);
     } catch (err) {
@@ -29,12 +28,22 @@ const JwtUtils = {
     return this.getDecodedToken()?.userType || null;
   },
 
+  // Thêm mới — lấy customerId trực tiếp từ token, không cần gọi API
+  getCurrentCustomerId() {
+    const id = this.getDecodedToken()?.customerId;
+    return id ? parseInt(id) : null;
+  },
+
+  // Thêm mới — lấy employeeId trực tiếp từ token
+  getCurrentEmployeeId() {
+    const id = this.getDecodedToken()?.employeeId;
+    return id ? parseInt(id) : null;
+  },
+
   isTokenExpired() {
     const decoded = this.getDecodedToken();
     if (!decoded?.exp) return true;
-
-    const now = Date.now() / 1000; 
-    return decoded.exp < now;
+    return decoded.exp < Date.now() / 1000;
   }
 };
 

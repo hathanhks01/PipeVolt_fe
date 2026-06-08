@@ -1,388 +1,255 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageCircle, X, AlertCircle, Wifi, WifiOff, Send, Package } from 'lucide-react';
+import { MessageCircle, X, Send, Wifi, WifiOff, AlertCircle, Loader2 } from 'lucide-react';
 import * as signalR from '@microsoft/signalr';
 import ChatService from '../../../Services/ChatService';
 import ChatMessageItem from '../../ChatMessageItem';
 import JwtUtils from '../../../constants/JwtUtils';
-import { Url } from '../../../constants/config';
-import customerservice from '../../../Services/CustomerService';
-const SIGNALR_URL = `${Url}chathub`;
-const RECONNECT_DELAY = 3000;
-const MESSAGE_THROTTLE_DELAY = 1000;
-const TYPING_TIMEOUT = 2000;
+import { createHubConnection } from '../../../common/signalr-common';
+import { Link } from 'react-router-dom';
+
+const TYPING_TIMEOUT_MS = 2500;
+const SENDER_CUSTOMER = 2;
 
 const ChatWidget = () => {
-  const [open, setOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
+  const [inputText, setInputText] = useState('');
   const [chatRoom, setChatRoom] = useState(null);
-  const [connection, setConnection] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [lastSentTime, setLastSentTime] = useState(0);
-  const [typingUsers, setTypingUsers] = useState(new Set());
-  const [adminOnline, setAdminOnline] = useState(false);
-  const [isUserTyping, setIsUserTyping] = useState(false);
-  
+  const [isInitializing, setIsInitializing] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(null);
+  const [typingUsers, setTypingUsers] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [authTick, setAuthTick] = useState(0);
+
+  const connectionRef = useRef(null);
   const messagesEndRef = useRef(null);
-  const messagesRef = useRef(messages);
-  const reconnectTimeoutRef = useRef(null);
   const typingTimeoutRef = useRef(null);
-  const [customerId, setCustomerId] = useState(null);
-  const [customerLoading, setCustomerLoading] = useState(false);
-  const [customerName, setCustomerName] = useState('');
+  const isTypingRef = useRef(false);
+  const chatRoomRef = useRef(null);
+  const initDoneRef = useRef(false);
 
-  // Monitor authentication state - detect logout
+  const customerId = JwtUtils.getCurrentCustomerId();
+  const isLoggedIn = !!customerId;
+
   useEffect(() => {
-    const checkAuthStatus = async () => {
-      const userId = JwtUtils.getCurrentUserId();
-      
-      if (!userId) {
-        // User đã logout - reset tất cả data
-        if (customerId || messages.length > 0 || chatRoom) {
-          console.log('Detecting logout - clearing chat data');
-          setCustomerId(null);
-          setMessages([]);
-          setChatRoom(null);
-          setCustomerName('');
-          setInput('');
-          setError(null);
-          setOpen(false);
-          setTypingUsers(new Set()); // Clear typing indicators
-          
-          // Close connection
-          if (connection) {
-            connection.stop().catch(console.error);
-            setConnection(null);
-          }
-        }
-        return;
-      }
+    chatRoomRef.current = chatRoom;
+  }, [chatRoom]);
 
-      setCustomerLoading(true);
-      try {
-        const customerData = await customerservice.getCustomerByUserId(userId);
-        
-        if (customerData && customerData.customerId) {
-          setCustomerId(customerData.customerId);
-          setCustomerName(customerData.customerName || 'Khách hàng');
-        } else {
-          setError('Không tìm thấy thông tin khách hàng');
-        }
-      } catch (err) {
-        console.error('Error fetching customer ID:', err);
-        setError('Không thể tải thông tin khách hàng');
-      } finally {
-        setCustomerLoading(false);
-      }
-    };
-
-    checkAuthStatus();
-    
-    // Poll authentication status mỗi 5 giây để detect logout
-    const authCheckInterval = setInterval(checkAuthStatus, 5000);
-    
-    return () => clearInterval(authCheckInterval);
-  }, [customerId, messages.length, chatRoom, connection]);
-
-  // Cập nhật messages ref
   useEffect(() => {
-    messagesRef.current = messages;
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Lắng nghe event mở chat từ bên ngoài (ví dụ nút "Liên Hệ Người Bán")
   useEffect(() => {
-    const handleOpenChat = () => setOpen(true);
-    window.addEventListener('openChat', handleOpenChat);
-    return () => window.removeEventListener('openChat', handleOpenChat);
+    const onOpen = () => setIsOpen(true);
+    const onAuth = () => setAuthTick(v => v + 1);
+    window.addEventListener('openChat', onOpen);
+    window.addEventListener('authChanged', onAuth);
+    return () => {
+      window.removeEventListener('openChat', onOpen);
+      window.removeEventListener('authChanged', onAuth);
+    };
   }, []);
 
-  // Auto scroll
   useEffect(() => {
-    if (open && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages, open]);
-
-  // Khởi tạo chat room
-  useEffect(() => {
-    if (!open || !customerId) {
-      // Reset chat room khi logout (customerId = null)
+    if (!isLoggedIn) {
+      initDoneRef.current = false;
       setChatRoom(null);
       setMessages([]);
-      setTypingUsers(new Set()); // Clear typing khi reset room
-      return;
+      setInputText('');
+      setUnreadCount(0);
+      setTypingUsers([]);
+      setIsInitializing(false);
+      connectionRef.current?.stop().catch(() => {});
+      connectionRef.current = null;
     }
-    
-    let isMounted = true;
-    setIsLoading(true);
-    setError(null);
-    setTypingUsers(new Set()); // Clear typing khi vào room khác
+  }, [isLoggedIn, authTick]);
 
-    const initializeChat = async () => {
+  useEffect(() => {
+    if (!isOpen || !isLoggedIn || !customerId) return;
+    if (initDoneRef.current && chatRoomRef.current) return;
+
+    let cancelled = false;
+    setIsInitializing(true);
+    setErrorMsg(null);
+
+    const init = async () => {
       try {
-        let room = null;
         const rooms = await ChatService.getChatRoomsForCustomer(customerId);
-        
-        if (rooms && rooms.length > 0) {
-          room = rooms[0];
-        } else {
+        let room = rooms?.[0] || null;
+        if (!room) {
           room = await ChatService.createChatRoom(customerId);
         }
-        
-        if (!isMounted) return;
-        
+        if (cancelled) return;
+
         setChatRoom(room);
-        
-        // Load messages với error handling
+        chatRoomRef.current = room;
+        initDoneRef.current = true;
+
         const msgs = await ChatService.getMessages(room.chatRoomId, 1, 50);
-        if (isMounted) {
-          setMessages(msgs || []);
-        }
+        if (!cancelled) setMessages(msgs || []);
+
+        await ChatService.markAllMessagesAsRead(room.chatRoomId, customerId, SENDER_CUSTOMER).catch(() => {});
+        if (!cancelled) setUnreadCount(0);
       } catch (err) {
-        if (isMounted) {
-          setError('Không thể kết nối đến hệ thống chat. Vui lòng thử lại.');
-          console.error('Chat initialization error:', err);
+        if (!cancelled) {
+          initDoneRef.current = false;
+          setErrorMsg('Không thể kết nối chat. Vui lòng thử lại.');
+          console.error('[ChatWidget] init error:', err);
         }
       } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        if (!cancelled) setIsInitializing(false);
       }
     };
 
-    initializeChat();
-    return () => { isMounted = false; };
-  }, [open, customerId]);
+    init();
+    return () => { cancelled = true; };
+  }, [isOpen, isLoggedIn, customerId, authTick]);
 
-  // SignalR connection với auto-reconnect
   useEffect(() => {
-    if (!chatRoom) {
-      // Close connection khi chat room bị reset (logout)
-      if (connection) {
-        connection.stop().catch(console.error);
+    if (!chatRoom || !isLoggedIn) return;
+
+    const hub = createHubConnection();
+
+    hub.on('ReceiveMessage', (msg) => {
+      if (msg.chatRoomId !== chatRoomRef.current?.chatRoomId) return;
+      setMessages(prev => {
+        if (prev.some(m => m.messageId === msg.messageId)) return prev;
+        return [...prev, msg];
+      });
+      if (isOpen && msg.senderType !== SENDER_CUSTOMER) {
+        ChatService.markMessageAsRead(msg.messageId).catch(() => {});
+      } else if (!isOpen) {
+        setUnreadCount(c => c + 1);
       }
-      return;
+    });
+
+    hub.on('MessageRead', (messageId) => {
+      setMessages(prev =>
+        prev.map(m => m.messageId === messageId ? { ...m, isRead: true } : m)
+      );
+    });
+
+    hub.on('UserTyping', (data) => {
+      if (data.senderId === customerId) return;
+      setTypingUsers(prev => {
+        if (prev.includes(data.senderName)) return prev;
+        return [...prev, data.senderName];
+      });
+    });
+
+    hub.on('UserStoppedTyping', () => {
+      setTypingUsers([]);
+    });
+
+    hub.onreconnecting(() => setConnectionStatus('reconnecting'));
+    hub.onreconnected(async () => {
+      setConnectionStatus('connected');
+      const room = chatRoomRef.current;
+      if (room) await hub.invoke('JoinChatRoom', room.chatRoomId).catch(() => {});
+    });
+    hub.onclose(() => setConnectionStatus('disconnected'));
+
+    hub.start()
+      .then(async () => {
+        setConnectionStatus('connected');
+        await hub.invoke('RegisterUser', customerId, SENDER_CUSTOMER).catch(() => {});
+        const room = chatRoomRef.current;
+        if (room) await hub.invoke('JoinChatRoom', room.chatRoomId).catch(() => {});
+      })
+      .catch(err => {
+        setConnectionStatus('disconnected');
+        console.error('[ChatWidget] SignalR start error:', err);
+      });
+
+    connectionRef.current = hub;
+
+    return () => {
+      hub.off('ReceiveMessage');
+      hub.off('MessageRead');
+      hub.off('UserTyping');
+      hub.off('UserStoppedTyping');
+      hub.stop().catch(() => {});
+      connectionRef.current = null;
+    };
+  }, [chatRoom, isLoggedIn, customerId, isOpen]);
+
+  useEffect(() => {
+    if (isOpen && chatRoom && customerId) {
+      ChatService.markAllMessagesAsRead(chatRoom.chatRoomId, customerId, SENDER_CUSTOMER).catch(() => {});
+      setUnreadCount(0);
     }
+  }, [isOpen, chatRoom, customerId]);
 
-    const setupConnection = async () => {
-      const hubConnection = new signalR.HubConnectionBuilder()
-        .withUrl(SIGNALR_URL)
-        .withAutomaticReconnect([0, 2000, 10000, 30000])
-        .configureLogging(signalR.LogLevel.Information)
-        .build();
+  const handleClose = () => {
+    setIsOpen(false);
+    setUnreadCount(0);
+  };
 
-      // Event handlers
-      const handleReceiveMessage = (msg) => {
-        // Chỉ nhận message nếu vẫn ở room này (check customerId)
-        if (customerId && msg.chatRoomId === chatRoom?.chatRoomId) {
-          setMessages(prev => {
-            // Kiểm tra duplicate
-            if (prev.some(m => m.messageId === msg.messageId)) {
-              return prev;
-            }
-            return [...prev, msg];
-          });
-        }
-      };
+  const retryInit = () => {
+    initDoneRef.current = false;
+    setChatRoom(null);
+    chatRoomRef.current = null;
+    setErrorMsg(null);
+    setAuthTick(v => v + 1);
+  };
 
-      const handleMessageRead = (messageId) => {
-        setMessages(prev => 
-          prev.map(msg => 
-            msg.messageId === messageId 
-              ? { ...msg, isRead: true, readAt: new Date() }
-              : msg
-          )
-        );
-      };
+  const stopTyping = useCallback(() => {
+    if (!isTypingRef.current) return;
+    isTypingRef.current = false;
+    const hub = connectionRef.current;
+    const room = chatRoomRef.current;
+    if (hub?.state === signalR.HubConnectionState.Connected && room) {
+      hub.invoke('UserStoppedTyping', room.chatRoomId, customerId).catch(() => {});
+    }
+  }, [customerId]);
 
-      const handleUserTyping = ({ userName }) => {
-        // Chỉ show khi người khác gõ (không phải current customer)
-        if (userName !== customerName) {
-          setTypingUsers(prev => {
-            const newSet = new Set(prev);
-            newSet.add(userName);
-            return newSet;
-          });
-          
-          // Clear timeout if exists
-          if (typingTimeoutRef.current) {
-            clearTimeout(typingTimeoutRef.current);
-          }
-          
-          // Auto-clear typing indicator sau 3 giây không có sự kiện
-          typingTimeoutRef.current = setTimeout(() => {
-            setTypingUsers(prev => {
-              const newSet = new Set(prev);
-              newSet.delete(userName);
-              return newSet;
-            });
-          }, 3000);
-        }
-      };
-
-      const handleUserStoppedTyping = (userId) => {
-        // Clear toàn bộ typing users (người khác đã ngừng gõ)
-        setTypingUsers(new Set());
-        if (typingTimeoutRef.current) {
-          clearTimeout(typingTimeoutRef.current);
-        }
-      };
-
-      // Connection state handlers
-      hubConnection.onreconnecting(() => {
-        setConnectionStatus('reconnecting');
-        setError('Đang kết nối lại...');
-      });
-
-      hubConnection.onreconnected(() => {
-        setConnectionStatus('connected');
-        setError(null);
-        // Rejoin room after reconnect
-        hubConnection.invoke('JoinChatRoom', chatRoom.chatRoomId).catch(console.error);
-      });
-
-      hubConnection.onclose(() => {
-        setConnectionStatus('disconnected');
-        setError('Mất kết nối. Đang thử kết nối lại...');
-        
-        // Không reconnect nếu đã logout
-        if (!customerId) {
-          return;
-        }
-        
-        // Manual reconnect fallback
-        reconnectTimeoutRef.current = setTimeout(() => {
-          if (hubConnection.state === signalR.HubConnectionState.Disconnected && customerId) {
-            setupConnection();
-          }
-        }, RECONNECT_DELAY);
-      });
-
-      // Register event handlers
-      hubConnection.on('ReceiveMessage', handleReceiveMessage);
-      hubConnection.on('MessageRead', handleMessageRead);
-      hubConnection.on('UserTyping', handleUserTyping);
-      hubConnection.on('UserStoppedTyping', handleUserStoppedTyping);
-
-      try {
-        await hubConnection.start();
-        setConnectionStatus('connected');
-        setError(null);
-        
-        // Register customer for targeted notifications
-        await hubConnection.invoke('RegisterUser', customerId, 2).catch(console.error); // 2 = Customer
-        
-        // Join chat room
-        await hubConnection.invoke('JoinChatRoom', chatRoom.chatRoomId);
-        
-        setConnection(hubConnection);
-      } catch (err) {
-        setConnectionStatus('disconnected');
-        setError('Không thể kết nối realtime. Tin nhắn vẫn sẽ được gửi.');
-        console.error('SignalR connection error:', err);
-      }
-    };
-
-    setupConnection();
-
-    return () => {
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-    };
-  }, [chatRoom, customerId]);
-
-  // Cleanup khi component unmount hoặc logout
-  useEffect(() => {
-    return () => {
-      if (connection && connection.state === signalR.HubConnectionState.Connected) {
-        connection.stop().catch(console.error);
-      }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-    };
-  }, [connection]);
-
-  // Throttled send message
   const handleSend = useCallback(async () => {
-    if (!input.trim() || !chatRoom || isLoading) {
-      return;
-    }
+    const text = inputText.trim();
+    if (!text || !chatRoom || isSending || isInitializing) return;
 
-    // Throttle messages
-    const now = Date.now();
-    if (now - lastSentTime < MESSAGE_THROTTLE_DELAY) {
-      setError('Vui lòng chờ trước khi gửi tin nhắn tiếp theo.');
-      return;
-    }
-
-    const messageContent = input.trim();
-    setInput('');
-    setIsLoading(true);
-    setError(null);
-    setLastSentTime(now);
+    setInputText('');
+    setIsSending(true);
+    setErrorMsg(null);
+    stopTyping();
 
     try {
-      const messageDto = {
+      await ChatService.sendMessage({
         chatRoomId: chatRoom.chatRoomId,
         senderId: customerId,
-        senderType: 1, // Customer
-        messageContent,
-        messageType: 0 // Text
-      };
-
-      await ChatService.sendMessage(messageDto);
-      
-      // Message sẽ được nhận lại qua SignalR
-      // Emit stop typing
-      setIsUserTyping(false);
-      if (connection && connection.state === signalR.HubConnectionState.Connected) {
-        await connection.invoke('UserStoppedTyping', chatRoom.chatRoomId, customerId).catch(console.error);
-      }
+        senderType: SENDER_CUSTOMER,
+        messageContent: text,
+        messageType: 0,
+      });
     } catch (err) {
-      setError('Không thể gửi tin nhắn. Vui lòng thử lại.');
-      setInput(messageContent); // Restore input
-      console.error('Send message error:', err);
+      setInputText(text);
+      setErrorMsg('Gửi tin nhắn thất bại. Thử lại.');
+      console.error('[ChatWidget] send error:', err);
     } finally {
-      setIsLoading(false);
+      setIsSending(false);
     }
-  }, [input, chatRoom, customerId, isLoading, lastSentTime, connection]);
+  }, [inputText, chatRoom, customerId, isSending, isInitializing, stopTyping]);
 
-  // Handle typing with debounce - chỉ emit khi bắt đầu gõ, không phải mỗi keystroke
   const handleInputChange = useCallback((e) => {
-    const value = e.target.value;
-    const wasEmpty = input.trim().length === 0;
-    const isNowEmpty = value.trim().length === 0;
-    
-    setInput(value);
+    const val = e.target.value;
+    setInputText(val);
 
-    // Emit typing event CHỈ khi chuyển từ rỗng sang có text (bắt đầu gõ)
-    if (connection && connection.state === signalR.HubConnectionState.Connected && wasEmpty && !isNowEmpty && !isUserTyping) {
-      setIsUserTyping(true);
-      connection.invoke('UserTyping', chatRoom?.chatRoomId, customerName).catch(console.error);
+    const hub = connectionRef.current;
+    const room = chatRoomRef.current;
+    if (!hub || hub.state !== signalR.HubConnectionState.Connected || !room) return;
+
+    if (!isTypingRef.current && val.trim()) {
+      isTypingRef.current = true;
+      hub.invoke('UserTyping', room.chatRoomId, customerId, 'Khách hàng').catch(() => {});
     }
 
-    // Clear previous timeout
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
+    clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(stopTyping, TYPING_TIMEOUT_MS);
 
-    // Set new timeout to emit "stopped typing" sau 2 giây không gõ
-    typingTimeoutRef.current = setTimeout(() => {
-      if (connection && connection.state === signalR.HubConnectionState.Connected && isUserTyping) {
-        setIsUserTyping(false);
-        connection.invoke('UserStoppedTyping', chatRoom?.chatRoomId, customerId).catch(console.error);
-      }
-    }, 2000);
-  }, [connection, chatRoom, customerId, customerName, input, isUserTyping]);
+    if (!val.trim()) stopTyping();
+  }, [customerId, stopTyping]);
 
-  // Handle Enter key
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -390,130 +257,158 @@ const ChatWidget = () => {
     }
   }, [handleSend]);
 
-  const getConnectionIcon = () => {
-    switch (connectionStatus) {
-      case 'connected':
-        return <Wifi className="w-4 h-4 text-green-500" />;
-      case 'reconnecting':
-        return <WifiOff className="w-4 h-4 text-yellow-500 animate-pulse" />;
-      default:
-        return <WifiOff className="w-4 h-4 text-red-500" />;
-    }
-  };
+  const ConnectionIcon = connectionStatus === 'connected'
+    ? <Wifi className="w-3.5 h-3.5 text-green-400" />
+    : connectionStatus === 'reconnecting'
+      ? <WifiOff className="w-3.5 h-3.5 text-yellow-400 animate-pulse" />
+      : <WifiOff className="w-3.5 h-3.5 text-red-400" />;
 
-  // Đánh dấu tất cả tin nhắn là đã đọc khi user mở phòng chat
-  useEffect(() => {
-    if (!open || !chatRoom || !customerId) return;
-    ChatService.markAllMessagesAsRead(chatRoom.chatRoomId, customerId, 1).catch(() => {});
-  }, [open, chatRoom, customerId, messages.length]);
+  const statusText = connectionStatus === 'connected' ? 'Đang kết nối'
+    : connectionStatus === 'reconnecting' ? 'Đang kết nối lại...'
+    : 'Mất kết nối';
 
   return (
-    <div>
-      {/* Chat button */}
-      {!open && (
+    <>
+      {!isOpen && (
         <button
-          className="fixed bottom-6 right-6 bg-blue-600 text-white rounded-full p-4 shadow-lg z-50 hover:bg-blue-700 transition-all duration-200 hover:scale-105"
-          onClick={() => setOpen(true)}
+          onClick={() => setIsOpen(true)}
+          className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
           aria-label="Mở chat hỗ trợ"
         >
           <MessageCircle className="w-6 h-6" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
         </button>
       )}
 
-      {/* Chat popup */}
-      {open && (
-        <div className="fixed bottom-6 right-6 w-96 bg-white rounded-xl shadow-2xl z-50 flex flex-col border border-gray-200 max-h-[32rem]">
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 rounded-t-xl">
-            <div className="flex items-center gap-3">
-              <div className="flex flex-col">
-                <span className="text-white font-semibold text-sm">Hỗ trợ khách hàng</span>
+      {isOpen && (
+        <div
+          className="fixed bottom-6 right-6 z-50 w-[360px] bg-white rounded-2xl shadow-2xl flex flex-col border border-gray-200 overflow-hidden"
+          style={{ height: '520px' }}
+        >
+          <div className="flex items-center justify-between px-4 py-3 bg-blue-600 flex-shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                <MessageCircle className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <p className="text-white font-semibold text-sm">Hỗ trợ khách hàng</p>
                 <div className="flex items-center gap-1 text-xs text-blue-100">
-                  {getConnectionIcon()}
-                  <span>{connectionStatus === 'connected' ? 'Kết nối' : 'Mất kết nối'}</span>
-                  {adminOnline && <span className="ml-1">• Admin online</span>}
+                  {ConnectionIcon}
+                  <span>{statusText}</span>
                 </div>
               </div>
             </div>
-            <button 
-              onClick={() => setOpen(false)} 
-              className="text-white hover:text-blue-100 transition-colors"
-              aria-label="Đóng chat"
-            >
+            <button onClick={handleClose} className="text-white/80 hover:text-white transition p-1">
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Error banner */}
-          {error && (
-            <div className="px-4 py-2 bg-yellow-50 border-b border-yellow-200 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-yellow-600 flex-shrink-0" />
-              <span className="text-sm text-yellow-800">{error}</span>
+          {errorMsg && (
+            <div className="bg-amber-50 border-b border-amber-200 px-3 py-2 flex items-center gap-2 flex-shrink-0">
+              <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+              <span className="text-xs text-amber-700 flex-1">{errorMsg}</span>
+              <button onClick={retryInit} className="text-xs text-amber-700 underline hover:text-amber-900">
+                Thử lại
+              </button>
+              <button onClick={() => setErrorMsg(null)} className="text-amber-400 hover:text-amber-600">
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
           )}
 
-          {/* Messages area */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-2 min-h-0 bg-gray-50" style={{ maxHeight: '20rem' }}>
-            {isLoading && messages.length === 0 ? (
-              <div className="flex justify-center items-center h-20">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-              </div>
-            ) : messages.length === 0 ? (
-              <div className="text-center text-gray-500 text-sm py-8">
-                <MessageCircle className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                <p>Chưa có tin nhắn. Hãy bắt đầu cuộc trò chuyện!</p>
-              </div>
-            ) : (
-              messages.map((msg) => (
-                <ChatMessageItem
-                  key={msg.messageId}
-                  message={msg}
-                  isOwn={msg.senderType === 1}
-                />
-              ))
-            )}
-            
-            {/* Typing indicator */}
-            {typingUsers.size > 0 && (
-              <div className="flex items-center gap-2 text-gray-500 text-sm italic py-2">
-                <div className="flex gap-1">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-                </div>
-                <span>{Array.from(typingUsers).join(', ')} đang nhập...</span>
-              </div>
-            )}
-            
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Input area */}
-          <div className="border-t bg-white rounded-b-xl p-3 space-y-2">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                className="flex-1 px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                placeholder={chatRoom ? "Nhập tin nhắn..." : "Đang khởi tạo..."}
-                value={input}
-                onChange={handleInputChange}
-                onKeyDown={handleKeyDown}
-                disabled={!chatRoom || isLoading}
-                maxLength={1000}
-              />
-              <button
-                className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
-                onClick={handleSend}
-                disabled={!input.trim() || !chatRoom || isLoading}
-                title="Gửi tin nhắn"
+          {!isLoggedIn ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-gray-500 text-sm text-center">
+              <MessageCircle className="w-10 h-10 text-gray-300" />
+              <p>Vui lòng đăng nhập tài khoản khách hàng để chat với nhân viên hỗ trợ.</p>
+              <Link
+                to="/login"
+                onClick={handleClose}
+                className="text-blue-600 hover:text-blue-700 font-medium text-sm"
               >
-                <Send className="w-4 h-4" />
-              </button>
+                Đăng nhập ngay
+              </Link>
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="flex-1 overflow-y-auto px-3 py-3 bg-gray-50">
+                {isInitializing ? (
+                  <div className="flex flex-col items-center justify-center h-full gap-2 text-gray-400">
+                    <Loader2 className="w-7 h-7 animate-spin" />
+                    <span className="text-sm">Đang tải...</span>
+                  </div>
+                ) : messages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full gap-2 text-gray-400">
+                    <MessageCircle className="w-10 h-10" />
+                    <p className="text-sm text-center">
+                      Xin chào! Chúng tôi sẵn sàng hỗ trợ bạn.<br />Hãy gửi tin nhắn để bắt đầu.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {messages.map((msg) => (
+                      <ChatMessageItem
+                        key={msg.messageId}
+                        message={msg}
+                        isOwn={msg.senderType === SENDER_CUSTOMER}
+                      />
+                    ))}
+
+                    {typingUsers.length > 0 && (
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="flex gap-1 bg-white border border-gray-200 rounded-2xl rounded-bl-sm px-3 py-2.5 shadow-sm">
+                          <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                          <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                          <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        </div>
+                        <span className="text-xs text-gray-400">{typingUsers.join(', ')} đang nhập...</span>
+                      </div>
+                    )}
+
+                    <div ref={messagesEndRef} />
+                  </>
+                )}
+              </div>
+
+              <div className="border-t bg-white px-3 py-3 flex-shrink-0">
+                <div className="flex items-end gap-2">
+                  <textarea
+                    className="flex-1 resize-none border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 max-h-24 leading-relaxed"
+                    placeholder={chatRoom ? 'Nhập tin nhắn... (Enter để gửi)' : 'Đang khởi tạo...'}
+                    value={inputText}
+                    onChange={handleInputChange}
+                    onKeyDown={handleKeyDown}
+                    disabled={!chatRoom || isInitializing}
+                    rows={1}
+                    maxLength={1000}
+                    style={{ minHeight: '42px' }}
+                    onInput={(e) => {
+                      e.target.style.height = 'auto';
+                      e.target.style.height = Math.min(e.target.scrollHeight, 96) + 'px';
+                    }}
+                  />
+                  <button
+                    onClick={handleSend}
+                    disabled={!inputText.trim() || !chatRoom || isSending || isInitializing}
+                    className="w-10 h-10 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-xl flex items-center justify-center transition-colors flex-shrink-0"
+                    aria-label="Gửi"
+                  >
+                    {isSending
+                      ? <Loader2 className="w-4 h-4 animate-spin" />
+                      : <Send className="w-4 h-4" />
+                    }
+                  </button>
+                </div>
+                <p className="text-right text-[11px] text-gray-300 mt-1">{inputText.length}/1000</p>
+              </div>
+            </>
+          )}
         </div>
       )}
-    </div>
+    </>
   );
 };
 

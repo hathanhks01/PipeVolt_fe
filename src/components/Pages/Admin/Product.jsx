@@ -26,7 +26,7 @@ const Product = () => {
         productCode: '',
         productName: '',
         categoryId: null,
-        brandId: null, 
+        brandId: null,
         sellingPrice: null,
         unit: '',
         description: '',
@@ -40,7 +40,7 @@ const Product = () => {
         productCode: '',
         productName: '',
         categoryId: null,
-        brandId: null, 
+        brandId: null,
         sellingPrice: null,
         unit: '',
         description: '',
@@ -139,7 +139,7 @@ const Product = () => {
     };
 
     const resetForm = () => {
-        setCurrentProduct({...emptyProduct});
+        setCurrentProduct({ ...emptyProduct });
         resetFileInput();
     };
 
@@ -204,7 +204,7 @@ const Product = () => {
     };
 
     const openEditModal = (product) => {
-        setCurrentProduct({...product});
+        setCurrentProduct({ ...product });
         setPreviewImage(product.imageUrl ? `${Url}${product.imageUrl}` : '');
         setSelectedFile(null);
         setShowEditModal(true);
@@ -239,7 +239,14 @@ const Product = () => {
     };
 
     return (
-        <div className="p-4">
+        <div className="p-4" style={{ fontFamily: "'Be Vietnam Pro', 'Segoe UI', sans-serif" }}>
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap');
+                .admin-table tr:hover td { background: #f0f9ff !important; }
+                .action-btn { background: none; border: none; cursor: pointer; font-size: 13px; font-weight: 600; padding: 5px 10px; border-radius: 6px; transition: background 0.15s; }
+                .action-btn.edit { color: #3b82f6; } .action-btn.edit:hover { background: #eff6ff; }
+                .action-btn.delete { color: #ef4444; } .action-btn.delete:hover { background: #fef2f2; }
+            `}</style>
             <div className="flex justify-between items-center mb-4">
                 <h1 className="text-2xl font-bold">Danh sách sản phẩm</h1>
                 <button
@@ -249,7 +256,7 @@ const Product = () => {
                     Thêm sản phẩm
                 </button>
             </div>
-            
+
             <div className="mb-4">
                 <input
                     type="text"
@@ -259,60 +266,62 @@ const Product = () => {
                     className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
             </div>
-            
-            <table className="min-w-full bg-white border border-gray-300">
-                <thead>
-                    <tr className="bg-gray-100">
-                        <th className="py-2 px-4 border">#</th>
-                        <th className="py-2 px-4 border">Mã sản phẩm</th>
-                        <th className="py-2 px-4 border">Tên sản phẩm</th>
-                        <th className="py-2 px-4 border">Ảnh</th>
-                        <th className="py-2 px-4 border">Giá</th>
-                        <th className="py-2 px-4 border">Thương hiệu</th>
-                        <th className="py-2 px-4 border">Danh mục</th>
-                        <th className="py-2 px-4 border">Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {currentItems.map((item, index) => (
-                        <tr key={item.productId || index} className="hover:bg-gray-50">
-                            <td className="py-2 px-4 border">{indexOfFirstItem + index + 1}</td>
-                            <td className="py-2 px-4 border">{item.productCode || 'N/A'}</td>
-                            <td className="py-2 px-4 border">{item.productName}</td>
-                            <td className="py-2 px-4 border">
-                                {item.imageUrl ? (
-                                    <img className="w-20 h-20 object-cover" src={`${Url}${item.imageUrl}`} alt={item.productName} />
-                                ) : (
-                                    <div className="w-20 h-20 bg-gray-200 flex items-center justify-center">
-                                        <span className="text-gray-500 text-xs">Không có ảnh</span>
-                                    </div>
-                                )}
-                            </td>
-                            <td className="py-2 px-4 border">
-                                {item.sellingPrice != null ? item.sellingPrice + ' vnd' : 'N/A'}
-                            </td>
-                            <td className="py-2 px-4 border">{getBrandName(item.brandId)}</td>
-                            <td className="py-2 px-4 border">{getCategoryName(item.categoryId)}</td>
-                            <td className="py-2 px-4 border">
-                                <div className="flex space-x-2">
+
+            <div style={{ background: '#fff', borderRadius: '14px', border: '1.5px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+                <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                        <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                            {['#', 'Mã sản phẩm', 'Tên sản phẩm', 'Ảnh', 'Giá', 'Thương hiệu', 'Danh mục', 'Thao tác'].map(h => (
+                                <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
+                                    {h}
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {currentItems.map((item, index) => (
+                            <tr key={item.productId || index} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                <td style={{ padding: '13px 16px', color: '#475569', fontSize: '14px' }}>{indexOfFirstItem + index + 1}</td>
+                                <td style={{ padding: '13px 16px' }}>
+                                    <span style={{ fontWeight: '600', color: '#1e293b', fontFamily: 'monospace', fontSize: '13px', background: '#f1f5f9', padding: '3px 8px', borderRadius: '6px' }}>
+                                        {item.productCode || 'N/A'}
+                                    </span>
+                                </td>
+                                <td style={{ padding: '13px 16px', color: '#334155', fontSize: '14px', fontWeight: '600' }}>{item.productName}</td>
+                                <td style={{ padding: '13px 16px' }}>
+                                    {item.imageUrl ? (
+                                        <img className="w-16 h-16 object-cover rounded border" src={`${Url}${item.imageUrl}`} alt={item.productName} />
+                                    ) : (
+                                        <div className="w-16 h-16 bg-gray-200 rounded border flex items-center justify-center">
+                                            <span className="text-gray-400 text-xs">Không có ảnh</span>
+                                        </div>
+                                    )}
+                                </td>
+                                <td style={{ padding: '13px 16px', color: '#3b82f6', fontSize: '14px', fontWeight: '600' }}>
+                                    {item.sellingPrice != null ? item.sellingPrice.toLocaleString() + ' VND' : 'N/A'}
+                                </td>
+                                <td style={{ padding: '13px 16px', color: '#475569', fontSize: '14px' }}>{getBrandName(item.brandId)}</td>
+                                <td style={{ padding: '13px 16px', color: '#475569', fontSize: '14px' }}>{getCategoryName(item.categoryId)}</td>
+                                <td style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
                                     <button
                                         onClick={() => openEditModal(item)}
-                                        className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
+                                        className="action-btn edit"
+                                        style={{ marginRight: '4px' }}
                                     >
-                                        Sửa
+                                        ✏️ Sửa
                                     </button>
                                     <button
                                         onClick={() => openDeleteModal(item)}
-                                        className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                                        className="action-btn delete"
                                     >
-                                        Xóa
+                                        🗑️ Xóa
                                     </button>
-                                </div>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
 
             {/* Pagination */}
             {totalPages > 1 && (
@@ -320,11 +329,10 @@ const Product = () => {
                     <button
                         onClick={() => handlePageChange(currentPage - 1)}
                         disabled={currentPage === 1}
-                        className={`px-4 py-2 rounded-lg border transition-colors ${
-                            currentPage === 1
+                        className={`px-4 py-2 rounded-lg border transition-colors ${currentPage === 1
                                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                 : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                        }`}
+                            }`}
                     >
                         Trước
                     </button>
@@ -341,11 +349,10 @@ const Product = () => {
                                     <button
                                         key={page}
                                         onClick={() => handlePageChange(page)}
-                                        className={`px-3 py-2 rounded-lg transition-colors ${
-                                            isCurrentPage
+                                        className={`px-3 py-2 rounded-lg transition-colors ${isCurrentPage
                                                 ? 'bg-blue-600 text-white'
                                                 : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                                        }`}
+                                            }`}
                                     >
                                         {page}
                                     </button>
@@ -367,11 +374,10 @@ const Product = () => {
                     <button
                         onClick={() => handlePageChange(currentPage + 1)}
                         disabled={currentPage === totalPages}
-                        className={`px-4 py-2 rounded-lg border transition-colors ${
-                            currentPage === totalPages
+                        className={`px-4 py-2 rounded-lg border transition-colors ${currentPage === totalPages
                                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                 : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                        }`}
+                            }`}
                     >
                         Sau
                     </button>
@@ -489,9 +495,9 @@ const Product = () => {
                                 />
                                 {previewImage && (
                                     <div className="mt-2">
-                                        <img 
-                                            src={previewImage} 
-                                            alt="Preview" 
+                                        <img
+                                            src={previewImage}
+                                            alt="Preview"
                                             className="w-32 h-32 object-cover border"
                                         />
                                     </div>
@@ -632,9 +638,9 @@ const Product = () => {
                                 />
                                 {previewImage && (
                                     <div className="mt-2">
-                                        <img 
-                                            src={previewImage} 
-                                            alt="Preview" 
+                                        <img
+                                            src={previewImage}
+                                            alt="Preview"
                                             className="w-32 h-32 object-cover border"
                                         />
                                         <p className="text-xs text-gray-500 mt-1">

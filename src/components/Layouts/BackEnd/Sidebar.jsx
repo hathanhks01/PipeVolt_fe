@@ -25,17 +25,17 @@ const Sidebar = () => {
   const navigate = useNavigate();
   const [openMenus, setOpenMenus] = useState({});
 
- const handleLogout = async () => {
+  const handleLogout = async () => {
     const username = sessionStorage.getItem('username');
     try {
       if (username) {
         // Gọi API logout backend
         await AuthService.logout(JSON.parse(username));
-         googleLogout();
+        googleLogout();
       }
     } catch (error) {
       console.error('Logout API error:', error);
-    } finally {     
+    } finally {
       navigate('/login');
     }
   };
@@ -63,7 +63,7 @@ const Sidebar = () => {
       icon: <ShoppingCart size={20} />,
       children: [
         { name: 'Đơn hàng', to: '/admin/Orders' },
-        { name: 'Bán tại quầy', to: '/admin/pos' }, 
+        { name: 'Bán tại quầy', to: '/admin/pos' },
         { name: 'Bảo hành', to: '/admin/Warranties' },
       ],
     },

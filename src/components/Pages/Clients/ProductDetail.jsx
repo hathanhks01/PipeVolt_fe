@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ProductService from '../../../Services/ProductService';
-import CartItemService from '../../../Services/CartItemService';
+import CartService from '../../../Services/CartService';
 import JwtUtils from '../../../constants/JwtUtils';
 import { Url } from '../../../constants/config';
 import Login from '../Auth/Login';
+import { ArrowLeft } from 'lucide-react';
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -31,8 +32,8 @@ const ProductDetail = () => {
   const handleAddToCart = async () => {
     if (quantity < 1) return;
     
-    const userId = JwtUtils.getCurrentUserId();
-    if (!userId) {
+    const customerId = JwtUtils.getCurrentCustomerId();
+    if (!customerId) {
       setPendingAction('addToCart');
       setShowLoginModal(true);
       return;
@@ -40,7 +41,7 @@ const ProductDetail = () => {
     
     setAdding(true);
     try {
-      await CartItemService.addCartItem(userId, { productId: product.productId, quantity });
+      await CartService.addItemToCart(customerId, { productId: product.productId, quantity });
       alert('Đã thêm vào giỏ hàng!');
     } catch (error) {
       alert('Thêm vào giỏ hàng thất bại!');
@@ -51,8 +52,8 @@ const ProductDetail = () => {
   const handleBuyNow = async () => {
     if (quantity < 1) return;
     
-    const userId = JwtUtils.getCurrentUserId();
-    if (!userId) {
+    const customerId = JwtUtils.getCurrentCustomerId();
+    if (!customerId) {
       setPendingAction('buyNow');
       setShowLoginModal(true);
       return;
@@ -60,8 +61,9 @@ const ProductDetail = () => {
     
     setBuyingNow(true);
     try {
-      const res = await CartItemService.addCartItem(userId, { productId: product.productId, quantity });
-      const cartItem = Array.isArray(res) ? res[res.length - 1] : res;
+      const cart = await CartService.addItemToCart(customerId, { productId: product.productId, quantity });
+      const cartItem = cart?.cartItems?.find(i => i.productId === product.productId)
+        || cart?.cartItems?.[cart.cartItems.length - 1];
       const selectedCartItems = [{
         cartItemId: cartItem?.cartItemId || cartItem?.id,
         productName: product.productName,
@@ -100,6 +102,13 @@ const ProductDetail = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-8 bg-white rounded-lg shadow mt-6">
+      <button
+        onClick={() => navigate(-1)}
+        className="flex items-center gap-2 text-gray-500 hover:text-blue-600 transition-colors mb-6 font-medium group"
+      >
+        <ArrowLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
+        Quay lại
+      </button>
       <div className="flex flex-col md:flex-row gap-8">
         <div className="flex-shrink-0 flex justify-center items-center md:w-1/2">
           <img

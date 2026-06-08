@@ -528,11 +528,11 @@ const PurchaseOrder = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '10px', alignItems: 'end' }}>
                   <div>
                     <label style={labelStyle}>Sản phẩm *</label>
-                    <select 
+                    <select
                       ref={productRef}
-                      value={detail.productId} 
-                      onChange={e => { setDetail(d => ({ ...d, productId: e.target.value })); setDetailErrors(prev => ({ ...prev, productId: false })); }} 
-                      className="po-input" 
+                      value={detail.productId}
+                      onChange={e => { setDetail(d => ({ ...d, productId: e.target.value })); setDetailErrors(prev => ({ ...prev, productId: false })); }}
+                      className="po-input"
                       style={{ ...inputStyle, marginBottom: 0, borderColor: detailErrors.productId ? '#ef4444' : '#e2e8f0', borderWidth: detailErrors.productId ? '2px' : '1.5px' }}
                     >
                       <option value="">-- Chọn sản phẩm --</option>
@@ -545,26 +545,26 @@ const PurchaseOrder = () => {
                   </div>
                   <div>
                     <label style={labelStyle}>Số lượng *</label>
-                    <input 
+                    <input
                       ref={quantityRef}
-                      type="number" 
-                      placeholder="0" 
-                      value={detail.quantity} 
-                      onChange={e => { setDetail(d => ({ ...d, quantity: e.target.value })); setDetailErrors(prev => ({ ...prev, quantity: false })); }} 
-                      className="po-input" 
-                      style={{ ...inputStyle, marginBottom: 0, borderColor: detailErrors.quantity ? '#ef4444' : '#e2e8f0', borderWidth: detailErrors.quantity ? '2px' : '1.5px' }} 
+                      type="number"
+                      placeholder="0"
+                      value={detail.quantity}
+                      onChange={e => { setDetail(d => ({ ...d, quantity: e.target.value })); setDetailErrors(prev => ({ ...prev, quantity: false })); }}
+                      className="po-input"
+                      style={{ ...inputStyle, marginBottom: 0, borderColor: detailErrors.quantity ? '#ef4444' : '#e2e8f0', borderWidth: detailErrors.quantity ? '2px' : '1.5px' }}
                     />
                   </div>
                   <div>
                     <label style={labelStyle}>Đơn giá *</label>
-                    <input 
+                    <input
                       ref={priceRef}
-                      type="number" 
-                      placeholder="0" 
-                      value={detail.unitCost} 
-                      onChange={e => { setDetail(d => ({ ...d, unitCost: e.target.value })); setDetailErrors(prev => ({ ...prev, unitCost: false })); }} 
-                      className="po-input" 
-                      style={{ ...inputStyle, marginBottom: 0, borderColor: detailErrors.unitCost ? '#ef4444' : '#e2e8f0', borderWidth: detailErrors.unitCost ? '2px' : '1.5px' }} 
+                      type="number"
+                      placeholder="0"
+                      value={detail.unitCost}
+                      onChange={e => { setDetail(d => ({ ...d, unitCost: e.target.value })); setDetailErrors(prev => ({ ...prev, unitCost: false })); }}
+                      className="po-input"
+                      style={{ ...inputStyle, marginBottom: 0, borderColor: detailErrors.unitCost ? '#ef4444' : '#e2e8f0', borderWidth: detailErrors.unitCost ? '2px' : '1.5px' }}
                     />
                   </div>
                   <button onClick={handleAddTempDetail} style={{ ...btnPrimary, padding: '9px 14px', whiteSpace: 'nowrap', marginBottom: 0 }}>+ Thêm</button>

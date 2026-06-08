@@ -34,6 +34,21 @@ const CheckoutService = {
       headers: { 'Content-Type': 'application/json' }
     });
     return response.data;
+  },
+
+  // Tạo đơn hàng pending cho thanh toán online
+  createPendingOrder: async (customerId, paymentMethodId, cartItemIds) => {
+    const response = await http.post(`/Checkout/${customerId}/pending`, {
+      paymentMethodId,
+      cartItemIds
+    }, { headers: { 'Content-Type': 'application/json' } });
+    return response.data; // { orderId, orderCode, totalAmount }
+  },
+
+  // Kiểm tra trạng thái đơn hàng theo orderCode
+  checkOrderStatus: async (orderCode) => {
+    const response = await http.get(`/SalesOrders/status/${orderCode}`);
+    return response.data; // { orderId, orderCode, status, isPaid }
   }
 };
 

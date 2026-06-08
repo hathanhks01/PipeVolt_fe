@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { ShoppingCart, Plus, Minus, Trash2, Package, AlertCircle, CheckCircle2 } from 'lucide-react';
-import CartItemService from '../../../Services/CartItemService';
+import CartService from '../../../Services/CartService';
 import JwtUtils from '../../../constants/JwtUtils';
 import { useNavigate } from 'react-router-dom';
-const CartItemList = ({ cartId = 1 }) => {
+
+const CartItemList = () => {
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -15,16 +16,22 @@ const CartItemList = ({ cartId = 1 }) => {
   // Load cart items
   useEffect(() => {
     loadCartItems();
-  }, [cartId]);
- const navigate = useNavigate();
- 
+  }, []);
+
+  const navigate = useNavigate();
+
   const loadCartItems = async () => {
     try {
       setLoading(true);
       setError(null);
-      const userId = JwtUtils.getCurrentUserId();
-      const data = await CartItemService.getCartItems(userId);
-      setCartItems(data || []);
+      const customerId = JwtUtils.getCurrentCustomerId();
+      if (!customerId) {
+        setCartItems([]);
+        setError('Vui lòng đăng nhập để xem giỏ hàng');
+        return;
+      }
+      const cart = await CartService.getCart(customerId);
+      setCartItems(cart?.cartItems || []);
       setSelectedItems(new Set());
       setSelectAll(false);
     } catch (err) {
@@ -46,16 +53,14 @@ const CartItemList = ({ cartId = 1 }) => {
     if (newQuantity < 1) return;
     try {
       setUpdatingItems(prev => new Set([...prev, cartItemId]));
-      const success = await CartItemService.updateCartItem({
+      const customerId = JwtUtils.getCurrentCustomerId();
+      if (!customerId) return;
+      await CartService.updateCartItem(customerId, {
         cartItemId: cartItemId,
         quantity: newQuantity,
       });
-      if (success) {
-        await loadCartItems();
-        showNotification('Cập nhật số lượng thành công');
-      } else {
-        showNotification('Không tìm thấy sản phẩm trong giỏ hàng', 'error');
-      }
+      await loadCartItems();
+      showNotification('Cập nhật số lượng thành công');
     } catch (err) {
       showNotification('Lỗi khi cập nhật số lượng', 'error');
       console.error('Error updating quantity:', err);
@@ -75,13 +80,11 @@ const CartItemList = ({ cartId = 1 }) => {
     }
     try {
       setUpdatingItems(prev => new Set([...prev, cartItemId]));
-      const success = await CartItemService.deleteCartItem(cartItemId);
-      if (success) {
-        await loadCartItems();
-        showNotification('Đã xóa sản phẩm khỏi giỏ hàng');
-      } else {
-        showNotification('Không tìm thấy sản phẩm để xóa', 'error');
-      }
+      const customerId = JwtUtils.getCurrentCustomerId();
+      if (!customerId) return;
+      await CartService.removeCartItem(customerId, cartItemId);
+      await loadCartItems();
+      showNotification('Đã xóa sản phẩm khỏi giỏ hàng');
     } catch (err) {
       showNotification('Lỗi khi xóa sản phẩm', 'error');
       console.error('Error removing item:', err);
@@ -99,9 +102,11 @@ const CartItemList = ({ cartId = 1 }) => {
     if (selectedItems.size === 0) return;
     if (!window.confirm('Bạn có chắc chắn muốn xóa các sản phẩm đã chọn khỏi giỏ hàng?')) return;
     try {
+      const customerId = JwtUtils.getCurrentCustomerId();
+      if (!customerId) return;
       setLoading(true);
       for (const cartItemId of selectedItems) {
-        await CartItemService.deleteCartItem(cartItemId);
+        await CartService.removeCartItem(customerId, cartItemId);
       }
       await loadCartItems();
       showNotification('Đã xóa các sản phẩm đã chọn khỏi giỏ hàng');
@@ -143,7 +148,7 @@ const CartItemList = ({ cartId = 1 }) => {
   const calculateTotal = () => {
     return cartItems
       .filter(item => selectedItems.has(item.cartItemId))
-      .reduce((total, item) => total + (item.lineTotal || 0), 0);
+      .reduce((total, item) => total + ((item.unitPrice || 0) * (item.quantity || 0)), 0);
   };
 
   // Calculate total quantity for selected items
@@ -162,7 +167,13 @@ const CartItemList = ({ cartId = 1 }) => {
   };
 
 const handleCheckout = () => {
-  const selectedCartItems = cartItems.filter(item => selectedItems.has(item.cartItemId));
+  const selectedCartItems = cartItems
+    .filter(item => selectedItems.has(item.cartItemId))
+    .map(item => ({
+      ...item,
+      lineTotal: (item.unitPrice || 0) * (item.quantity || 0)
+    }));
+
   if (selectedCartItems.length === 0) {
     showNotification('Vui lòng chọn ít nhất một sản phẩm để thanh toán', 'error');
     return;
@@ -302,7 +313,7 @@ const handleCheckout = () => {
                     {/* Line Total */}
                     <div className="text-right min-w-[120px]">
                       <p className="font-bold text-lg text-gray-800">
-                        {formatCurrency(item.lineTotal || 0)}
+                        {formatCurrency((item.unitPrice || 0) * (item.quantity || 0))}
                       </p>
                     </div>
 

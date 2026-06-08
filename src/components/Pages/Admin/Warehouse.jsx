@@ -132,7 +132,14 @@ const Warehouse = () => {
     };
 
     return (
-        <div className="p-4">
+        <div className="p-4" style={{ fontFamily: "'Be Vietnam Pro', 'Segoe UI', sans-serif" }}>
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap');
+                .admin-table tr:hover td { background: #f0f9ff !important; }
+                .action-btn { background: none; border: none; cursor: pointer; font-size: 13px; font-weight: 600; padding: 5px 10px; border-radius: 6px; transition: background 0.15s; }
+                .action-btn.edit { color: #3b82f6; } .action-btn.edit:hover { background: #eff6ff; }
+                .action-btn.delete { color: #ef4444; } .action-btn.delete:hover { background: #fef2f2; }
+            `}</style>
             <div className="flex justify-between items-center mb-4">
                 <h1 className="text-2xl font-bold">Danh sách kho hàng</h1>
                 <button
@@ -153,43 +160,48 @@ const Warehouse = () => {
                 />
             </div>
 
-            <table className="min-w-full bg-white border border-gray-300">
-                <thead>
-                    <tr className="bg-gray-100">
-                        <th className="py-2 px-4 border">#</th>
-                        <th className="py-2 px-4 border">Mã kho</th>
-                        <th className="py-2 px-4 border">Tên kho</th>
-                        <th className="py-2 px-4 border">Địa chỉ</th>
-                        <th className="py-2 px-4 border">Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {filteredWarehouses.slice(0, 20).map((item, index) => (
-                        <tr key={item.warehouseId || index} className="hover:bg-gray-50">
-                            <td className="py-2 px-4 border">{index + 1}</td>
-                            <td className="py-2 px-4 border">{item.warehouseCode || 'N/A'}</td>
-                            <td className="py-2 px-4 border">{item.warehouseName || 'N/A'}</td>
-                            <td className="py-2 px-4 border">{item.address || 'N/A'}</td>
-                            <td className="py-2 px-4 border">
-                                <div className="flex space-x-2">
+            <div style={{ background: '#fff', borderRadius: '14px', border: '1.5px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+                <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                        <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                            {['#', 'Mã kho', 'Tên kho', 'Địa chỉ', 'Thao tác'].map(h => (
+                                <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
+                                    {h}
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {filteredWarehouses.slice(0, 20).map((item, index) => (
+                            <tr key={item.warehouseId || index} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                <td style={{ padding: '13px 16px', color: '#475569', fontSize: '14px' }}>{index + 1}</td>
+                                <td style={{ padding: '13px 16px' }}>
+                                    <span style={{ fontWeight: '600', color: '#1e293b', fontFamily: 'monospace', fontSize: '13px', background: '#f1f5f9', padding: '3px 8px', borderRadius: '6px' }}>
+                                        {item.warehouseCode || 'N/A'}
+                                    </span>
+                                </td>
+                                <td style={{ padding: '13px 16px', color: '#334155', fontSize: '14px', fontWeight: '600' }}>{item.warehouseName || 'N/A'}</td>
+                                <td style={{ padding: '13px 16px', color: '#475569', fontSize: '14px' }}>{item.address || 'N/A'}</td>
+                                <td style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
                                     <button
                                         onClick={() => openEditModal(item)}
-                                        className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
+                                        className="action-btn edit"
+                                        style={{ marginRight: '4px' }}
                                     >
-                                        Sửa
+                                        ✏️ Sửa
                                     </button>
                                     <button
                                         onClick={() => openDeleteModal(item)}
-                                        className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                                        className="action-btn delete"
                                     >
-                                        Xóa
+                                        🗑️ Xóa
                                     </button>
-                                </div>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
 
             {/* Modal Thêm Kho Hàng */}
             {showAddModal && (

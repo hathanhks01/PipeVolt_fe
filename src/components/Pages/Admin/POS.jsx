@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Minus, Trash2, User, ShoppingCart, Calculator, CreditCard, Printer, X, AlertCircle, Users2, Tag, Package } from 'lucide-react';
 import ProductService from '../../../Services/ProductService';
+import { showAlert } from '../../../common/ui';
 import ProductCategoryService from '../../../Services/ProductCategoryService';
 import CheckoutService from '../../../Services/CheckoutService';
 import CustomerService from '../../../Services/CustomerService';
@@ -34,7 +35,7 @@ const POS = () => {
   const [lineItemDiscountModals, setLineItemDiscountModals] = useState({});
   const [showInventoryAlert, setShowInventoryAlert] = useState(null);
   const navigate = useNavigate();
-  
+
   // Walk-in customer constant
   const walkInCustomer = {
     customerId: 0,
@@ -48,7 +49,7 @@ const POS = () => {
   const [products, setProducts] = useState([]);
 
   const [categories, setCategories] = useState([]);
-  
+
   // Add loading state for categories
   const [loadingCategories, setLoadingCategories] = useState(false);
 
@@ -151,39 +152,58 @@ const POS = () => {
     fetchInventories();
   }, []);
 
-  // Sửa lại hàm filter
-  const filteredProducts = products.filter(product => {
-    // Log để debug
-    console.log('Filtering product:', product);
-    
-    if (!product) return false;
-    
-    const matchesSearch = product.productName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.productCode?.toLowerCase().includes(searchTerm.toLowerCase());
-  
-    const matchesCategory = selectedCategory === 'all' || 
-                         product.categoryId?.toString() === selectedCategory;
-  
-    // Log kết quả filter
-    console.log('Matches search:', matchesSearch);
-    console.log('Matches category:', matchesCategory);
-  
-    return matchesSearch && matchesCategory;
-  });
+  const getAvailableQuantity = (productId) => {
+    const inv = inventories.find(i => Number(i.productId) === Number(productId));
+    if (inv && inv.quantity !== undefined && inv.quantity !== null) return Number(inv.quantity) || 0;
+    const prod = products.find(p => Number(p.productId) === Number(productId));
+    return prod ? (Number(prod.quantity) || 0) : 0;
+  };
+
+  // Sửa lại hàm filter và sắp xếp sản phẩm hết hàng sau cùng
+  const filteredProducts = products
+    .filter(product => {
+      // Log để debug
+      console.log('Filtering product:', product);
+
+      if (!product) return false;
+
+      const matchesSearch = product.productName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.productCode?.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesCategory = selectedCategory === 'all' ||
+        product.categoryId?.toString() === selectedCategory;
+
+      // Log kết quả filter
+      console.log('Matches search:', matchesSearch);
+      console.log('Matches category:', matchesCategory);
+
+      return matchesSearch && matchesCategory;
+    })
+    .sort((a, b) => {
+      const aQty = Number(a?.quantity) || 0;
+      const bQty = Number(b?.quantity) || 0;
+
+      if (aQty < 1 && bQty >= 1) return 1;
+      if (bQty < 1 && aQty >= 1) return -1;
+      return 0;
+    });
 
   const addToCart = (product) => {
-    // Check inventory before adding to cart
-    const inventory = inventories.find(inv => inv.productId === product.productId);
-    if (!inventory || inventory.quantity < 1) {
+    const availableQuantity = getAvailableQuantity(product.productId);
+    if (availableQuantity < 1) {
       setShowInventoryAlert({
         productName: product.productName,
-        available: inventory?.quantity || 0
+        available: availableQuantity
       });
       return;
     }
 
     const existingItem = cart.find(item => item.productId === product.productId);
     if (existingItem) {
+      // prevent exceeding available quantity silently
+      if (existingItem.quantity + 1 > availableQuantity) {
+        return;
+      }
       setCart(cart.map(item =>
         item.productId === product.productId
           ? { ...item, quantity: item.quantity + 1, lineTotal: (item.quantity + 1) * item.unitPrice, lineDiscount: item.lineDiscount || 0 }
@@ -208,13 +228,22 @@ const POS = () => {
       removeFromCart(productId);
       return;
     }
+    const available = getAvailableQuantity(productId);
+    if (newQuantity > available) {
+      // cap to available silently
+      newQuantity = available;
+      if (newQuantity <= 0) {
+        removeFromCart(productId);
+        return;
+      }
+    }
     setCart(cart.map(item =>
       item.productId === productId
-        ? { 
-            ...item, 
-            quantity: newQuantity, 
-            lineTotal: newQuantity * item.unitPrice * (1 - (item.lineDiscount || 0) / 100)
-          }
+        ? {
+          ...item,
+          quantity: newQuantity,
+          lineTotal: newQuantity * item.unitPrice * (1 - (item.lineDiscount || 0) / 100)
+        }
         : item
     ));
   };
@@ -227,10 +256,10 @@ const POS = () => {
     setCart(cart.map(item =>
       item.productId === productId
         ? {
-            ...item,
-            lineDiscount: discountPercent,
-            lineTotal: item.quantity * item.unitPrice * (1 - discountPercent / 100)
-          }
+          ...item,
+          lineDiscount: discountPercent,
+          lineTotal: item.quantity * item.unitPrice * (1 - discountPercent / 100)
+        }
         : item
     ));
     setLineItemDiscountModals({ ...lineItemDiscountModals, [productId]: false });
@@ -246,9 +275,12 @@ const POS = () => {
 
   const { subtotal, discountAmount, taxAmount, total } = calculateTotal();
 
+  // If any cart item exceeds available stock, prevent checkout
+  const isAnyExceed = cart.some(item => Number(item.quantity) > Number(getAvailableQuantity(item.productId)));
+
   const handlePayment = () => {
     if (cart.length === 0) {
-      alert('Giỏ hàng trống!');
+      showAlert('Giỏ hàng trống!', 'error');
       return;
     }
     setShowPaymentModal(true);
@@ -257,7 +289,7 @@ const POS = () => {
   const processPayment = async () => {
     const paid = parseFloat(customerPaid) || 0;
     if (paid < total) {
-      alert('Số tiền thanh toán không đủ!');
+      showAlert('Số tiền thanh toán không đủ!', 'error');
       return;
     }
 
@@ -275,7 +307,7 @@ const POS = () => {
         customerName: customer?.customerName,
         customerPhone: customer?.phone,
         customerAddress: customer?.address,
-        customerTaxCode: customer?.customerCode
+        customerTaxCode: customer?.taxCode
       };
 
       // Gọi API POS Checkout
@@ -294,11 +326,11 @@ const POS = () => {
       setCustomerPaid('');
       setShowPaymentModal(false);
 
-      alert(`Thanh toán thành công! Mã đơn hàng: ${orderId}\nTiền thừa: ${(paid - total).toLocaleString('vi-VN')} VNĐ`);
+      showAlert(`Thanh toán thành công! Mã đơn hàng: ${orderId}\nTiền thừa: ${(paid - total).toLocaleString('vi-VN')} VNĐ`, 'success');
       // window.open(`/print-bill/${orderId}`, '_blank');
       navigate(`/print-bill/${orderId}`);
     } catch (error) {
-      alert('Thanh toán thất bại: ' + (error?.response?.data || error.message));
+      showAlert('Thanh toán thất bại: ' + (error?.response?.data || error.message), 'error');
     }
   };
 
@@ -311,8 +343,7 @@ const POS = () => {
     try {
       // Validate required fields
       if (!newCustomer.customerName || !newCustomer.phone) {
-        alert('Vui lòng nhập tên khách hàng và số điện thoại!');
-        return;
+        showAlert('Vui lòng nhập tên khách hàng và số điện thoại!', 'error');
       }
 
       // Create new customer object for API
@@ -325,22 +356,22 @@ const POS = () => {
 
       // Call API to create customer
       const response = await CustomerService.createCustomer(createCustomerDto);
-      
+
       // Add new customer to list
       const createdCustomer = response.data || response;
       setCustomers([...customers, createdCustomer]);
-      
+
       // Select the new customer
       setCustomer(createdCustomer);
-      
+
       // Close modal and reset form
       setShowCreateCustomerModal(false);
       setNewCustomer({ customerName: '', phone: '', address: '', customerCode: '' });
-      
-      alert('Tạo khách hàng thành công!');
+
+      showAlert('Tạo khách hàng thành công!', 'success');
     } catch (error) {
       console.error('Error creating customer:', error);
-      alert('Lỗi khi tạo khách hàng: ' + (error.response?.data?.message || error.message));
+      showAlert('Lỗi khi tạo khách hàng: ' + (error.response?.data?.message || error.message), 'error');
     }
   };
 
@@ -382,7 +413,7 @@ const POS = () => {
               )}
             </div>
           </div>
-          
+
           {/* Search và Category Filter */}
           <div className="flex gap-4 mb-4">
             <div className="flex-1 relative">
@@ -414,41 +445,51 @@ const POS = () => {
         {/* Products Grid */}
         <div className="flex-1 overflow-y-auto p-4">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {filteredProducts.map(product => (
-              <div
-                key={product.productId}
-                className="bg-white p-4 rounded-lg shadow hover:shadow-md cursor-pointer transition-shadow border"
-                onClick={() => addToCart(product)}
-              >
-                <div className="aspect-square bg-gray-200 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
-                  <img 
-                  src={ `${Url}${product.imageUrl}`}
-                    alt={product.productName}
-                    className="w-full h-full object-cover rounded-lg"
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                      if (e.target.nextSibling) {
-                        e.target.nextSibling.style.display = 'flex';
-                      }
-                    }}
-                  />
-                  <svg 
-                    className="w-full h-full text-gray-400 p-8 hidden" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
+            {filteredProducts.map(product => {
+              const availableQuantity = Number(product.quantity) || 0;
+              const isOutOfStock = availableQuantity < 1;
+
+              return (
+                <div
+                  key={product.productId}
+                  className={`bg-white p-4 rounded-lg shadow transition-shadow border ${isOutOfStock ? 'opacity-60 cursor-not-allowed border-red-200' : 'hover:shadow-md cursor-pointer'}`}
+                  onClick={() => !isOutOfStock && addToCart(product)}
+                >
+                  <div className="aspect-square bg-gray-200 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
+                    <img
+                      src={`${Url}${product.imageUrl}`}
+                      alt={product.productName}
+                      className="w-full h-full object-cover rounded-lg"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        if (e.target.nextSibling) {
+                          e.target.nextSibling.style.display = 'flex';
+                        }
+                      }}
+                    />
+                    <svg
+                      className="w-full h-full text-gray-400 p-8 hidden"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <h3 className="font-medium text-sm mb-1 line-clamp-2">{product.productName}</h3>
+                  <p className="text-xs text-blue-600 mb-2">{product.productCode}</p>
+                  <p className="text-lg font-bold text-green-600">
+                    {Number(product.sellingPrice).toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} VNĐ
+                  </p>
+                  <p className="text-xs text-gray-500">{product.unit}</p>
+                  <div className="mt-3 text-xs">
+                    <span className={`font-semibold ${isOutOfStock ? 'text-red-600' : 'text-gray-600'}`}>
+                      {isOutOfStock ? 'Hết hàng' : `Còn: ${availableQuantity}`}
+                    </span>
+                  </div>
                 </div>
-                <h3 className="font-medium text-sm mb-1 line-clamp-2">{product.productName}</h3>
-                <p className="text-xs text-blue-600 mb-2">{product.productCode}</p>
-                <p className="text-lg font-bold text-green-600">
-                  {Number(product.sellingPrice).toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} VNĐ
-                </p>
-                <p className="text-xs text-gray-500">/{product.unit}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
@@ -479,12 +520,15 @@ const POS = () => {
               <ShoppingCart className="w-5 h-5" />
               <span className="font-medium">Giỏ hàng ({cart.length})</span>
             </div>
-            
+
             {cart.length === 0 ? (
               <p className="text-gray-500 text-sm text-center py-8">Giỏ hàng trống</p>
             ) : (
               <div className="space-y-3">
-                {cart.map(item => (
+                {cart.map(item => {
+                  const availableForItem = getAvailableQuantity(item.productId);
+                  const canIncrease = Number(item.quantity) < Number(availableForItem);
+                  return (
                   <div key={item.productId} className="border rounded-lg p-3 bg-gray-50">
                     <div className="flex justify-between items-start mb-2">
                       <h4 className="font-medium text-sm line-clamp-2 flex-1">{item.productName}</h4>
@@ -496,7 +540,7 @@ const POS = () => {
                       </button>
                     </div>
                     <p className="text-xs text-gray-500 mb-2">{item.productCode}</p>
-                    
+
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <button
@@ -508,7 +552,8 @@ const POS = () => {
                         <span className="text-sm font-medium w-8 text-center">{item.quantity}</span>
                         <button
                           onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                          className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300"
+                          disabled={!canIncrease}
+                          className={`w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center ${canIncrease ? 'hover:bg-gray-300' : 'opacity-50 cursor-not-allowed'}`}
                         >
                           <Plus className="w-3 h-3" />
                         </button>
@@ -535,7 +580,8 @@ const POS = () => {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -581,10 +627,10 @@ const POS = () => {
               </span>
             </div>
           </div>
-          
+
           <button
             onClick={handlePayment}
-            disabled={cart.length === 0}
+            disabled={cart.length === 0 || isAnyExceed}
             className="w-full mt-4 bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             <CreditCard className="w-4 h-4" />
@@ -681,7 +727,7 @@ const POS = () => {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2">Phương thức thanh toán:</label>
@@ -697,7 +743,7 @@ const POS = () => {
                   ))}
                 </select>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium mb-2">
                   Tổng tiền: <span className="text-green-600 font-bold">{total.toLocaleString('vi-VN')} VNĐ</span>
@@ -710,13 +756,13 @@ const POS = () => {
                   onChange={(e) => setCustomerPaid(e.target.value)}
                 />
               </div>
-              
+
               {customerPaid && parseFloat(customerPaid) >= total && (
                 <div className="text-sm text-green-600">
                   Tiền thừa: {(parseFloat(customerPaid) - total).toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} VNĐ
                 </div>
               )}
-              
+
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowPaymentModal(false)}
@@ -759,7 +805,7 @@ const POS = () => {
                   placeholder="Nhập tên khách hàng"
                   className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={newCustomer.customerName}
-                  onChange={(e) => setNewCustomer({...newCustomer, customerName: e.target.value})}
+                  onChange={(e) => setNewCustomer({ ...newCustomer, customerName: e.target.value })}
                 />
               </div>
 
@@ -770,7 +816,7 @@ const POS = () => {
                   placeholder="Nhập số điện thoại"
                   className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={newCustomer.phone}
-                  onChange={(e) => setNewCustomer({...newCustomer, phone: e.target.value})}
+                  onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
                 />
               </div>
 
@@ -781,7 +827,7 @@ const POS = () => {
                   placeholder="Nhập địa chỉ (tuỳ chọn)"
                   className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={newCustomer.address}
-                  onChange={(e) => setNewCustomer({...newCustomer, address: e.target.value})}
+                  onChange={(e) => setNewCustomer({ ...newCustomer, address: e.target.value })}
                 />
               </div>
 
@@ -809,7 +855,7 @@ const POS = () => {
       )}
 
       {/* Line Item Discount Modal */}
-      {Object.entries(lineItemDiscountModals).map(([productId, isOpen]) => 
+      {Object.entries(lineItemDiscountModals).map(([productId, isOpen]) =>
         isOpen && (
           <div key={productId} className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-80">

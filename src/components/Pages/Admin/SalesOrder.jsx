@@ -1,26 +1,52 @@
 import React, { useState, useEffect } from 'react';
 import SalesOrderService from '../../../Services/SalesOrderService';
+import http from '../../../common/http-common';
 
-const SALES_ORDER_STATUSES = [
-  { value: 'Pending', label: 'Chờ xử lý', color: '#f59e0b', bg: '#fffbeb' },
-  { value: 'Processing', label: 'Đang xử lý', color: '#3b82f6', bg: '#eff6ff' },
-  { value: 'Completed', label: 'Hoàn thành', color: '#10b981', bg: '#ecfdf5' },
-  { value: 'Cancelled', label: 'Đã hủy', color: '#ef4444', bg: '#fef2f2' },
-];
-
-const getStatusInfo = (value) => {
-  const found = SALES_ORDER_STATUSES.find(s => s.value === value);
-  return found || { label: value ?? '—', color: '#9ca3af', bg: '#f9fafb' };
+const getDefaultStatusLabel = (value) => {
+    switch (Number(value)) {
+        case 0: return 'Chờ xử lý';
+        case 1: return 'Đang xử lý';
+        case 2: return 'Đang giao';
+        case 3: return 'Hoàn thành';
+        case 4: return 'Đã hủy';
+        case 5: return 'Hoàn trả';
+        default: return String(value ?? 'N/A');
+    }
 };
 
+const getDefaultPaymentLabel = (value) => {
+    if (value === 1) return 'Tiền mặt';
+    if (value === 2) return 'Chuyển khoản';
+    if (value === 3) return 'Thẻ tín dụng';
+    return String(value ?? 'N/A');
+};
+
+// Hardcoded fallback options (temporary)
+const SALES_ORDER_STATUS_OPTIONS = [
+    { value: 0, label: 'Chờ xử lý' },
+    { value: 1, label: 'Đang xử lý' },
+    { value: 2, label: 'Đang giao' },
+    { value: 3, label: 'Hoàn thành' },
+    { value: 4, label: 'Đã hủy' },
+    { value: 5, label: 'Hoàn trả' },
+];
+
+const PAYMENT_METHOD_OPTIONS = [
+    { value: 1, label: 'Tiền mặt' },
+    { value: 2, label: 'Chuyển khoản' },
+    { value: 3, label: 'Thẻ tín dụng' },
+];
+
 const formatCurrency = (amount) => {
-  if (!amount && amount !== 0) return '—';
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+    if (amount === null || amount === undefined || amount === '') return '—';
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 };
 
 const SalesOrder = () => {
     const [salesOrders, setSalesOrders] = useState([]);
     const [filteredSalesOrders, setFilteredSalesOrders] = useState([]);
+    const [statusOptions, setStatusOptions] = useState([]);
+    const [paymentMethodOptions, setPaymentMethodOptions] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
@@ -36,7 +62,8 @@ const SalesOrder = () => {
         totalAmount: '',
         discountAmount: '',
         taxAmount: '',
-        status: '',
+        status: 0,
+        paymentMethodId: 1,
         paymentMethod: ''
     });
 
@@ -49,13 +76,48 @@ const SalesOrder = () => {
         totalAmount: '',
         discountAmount: '',
         taxAmount: '',
-        status: '',
+        status: 0,
+        paymentMethodId: 1,
         paymentMethod: ''
     };
 
     useEffect(() => {
         fetchSalesOrders();
+        fetchLookups();
     }, []);
+
+    const fetchLookups = async () => {
+        try {
+            const [statusRes, pmRes] = await Promise.all([
+                http.get('Lookups/SaleStatuses'),
+                http.get('PaymentMethods/GetList')
+            ]);
+
+            const statuses = statusRes?.data || [];
+            if (statuses && statuses.length > 0) setStatusOptions(statuses.map(s => ({ value: s.value, label: s.label })));
+
+            const pms = pmRes?.data || [];
+            // map possible property names from backend
+            if (pms && pms.length > 0) setPaymentMethodOptions(pms.map(pm => ({ value: pm.paymentMethodId ?? pm.PaymentMethodId ?? pm.payment_method_id ?? pm.paymentMethodId, label: pm.methodName ?? pm.MethodName ?? pm.method_name ?? pm.method_name })));
+        } catch (err) {
+            // API may not exist in this environment; keep hardcoded options
+            console.error('Failed to load lookups, using hardcoded defaults', err);
+        }
+    };
+
+    const getStatusLabel = (value) => {
+        const source = (statusOptions && statusOptions.length > 0) ? statusOptions : SALES_ORDER_STATUS_OPTIONS;
+        const found = source.find(s => Number(s.value) === Number(value));
+        return found ? found.label : getDefaultStatusLabel(value);
+    };
+
+    const getPaymentMethodLabel = (value) => {
+        if (value === null || value === undefined || value === '') return 'N/A';
+        if (typeof value === 'string' && value.trim() !== '') return value;
+        const source = (paymentMethodOptions && paymentMethodOptions.length > 0) ? paymentMethodOptions : PAYMENT_METHOD_OPTIONS;
+        const found = source.find(p => Number(p.value) === Number(value));
+        return found ? found.label : getDefaultPaymentLabel(value);
+    };
 
     const fetchSalesOrders = async () => {
         try {
@@ -69,10 +131,15 @@ const SalesOrder = () => {
     };
 
     useEffect(() => {
-        const filtered = salesOrders.filter(order =>
-            (order.orderCode?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-            (order.status?.toLowerCase() || '').includes(searchTerm.toLowerCase())
-        );
+        const filtered = salesOrders.filter(order => {
+            const statusLabel = getStatusLabel(order.status);
+            const paymentLabel = getPaymentMethodLabel(order.paymentMethodId ?? order.paymentMethod);
+            return (
+                (order.orderCode?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+                statusLabel.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                paymentLabel.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+        });
         setFilteredSalesOrders(filtered);
         setCurrentPage(1); // Reset to first page when search term changes
     }, [searchTerm, salesOrders]);
@@ -83,9 +150,10 @@ const SalesOrder = () => {
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
+        const normalizedValue = (name === 'status' || name === 'paymentMethodId') ? Number(value) : value;
         setCurrentSalesOrder(prevState => ({
             ...prevState,
-            [name]: value
+            [name]: normalizedValue
         }));
     };
 
@@ -102,8 +170,8 @@ const SalesOrder = () => {
                 totalAmount: currentSalesOrder.totalAmount ? parseFloat(currentSalesOrder.totalAmount) : null,
                 discountAmount: currentSalesOrder.discountAmount ? parseFloat(currentSalesOrder.discountAmount) : null,
                 taxAmount: currentSalesOrder.taxAmount ? parseFloat(currentSalesOrder.taxAmount) : null,
-                status: currentSalesOrder.status,
-                paymentMethod: currentSalesOrder.paymentMethod
+                status: currentSalesOrder.status != null ? Number(currentSalesOrder.status) : null,
+                paymentMethodId: currentSalesOrder.paymentMethodId != null ? Number(currentSalesOrder.paymentMethodId) : null
             };
 
             await SalesOrderService.createSalesOrder(orderData);
@@ -127,8 +195,8 @@ const SalesOrder = () => {
                 totalAmount: currentSalesOrder.totalAmount ? parseFloat(currentSalesOrder.totalAmount) : null,
                 discountAmount: currentSalesOrder.discountAmount ? parseFloat(currentSalesOrder.discountAmount) : null,
                 taxAmount: currentSalesOrder.taxAmount ? parseFloat(currentSalesOrder.taxAmount) : null,
-                status: currentSalesOrder.status,
-                paymentMethod: currentSalesOrder.paymentMethod
+                status: currentSalesOrder.status != null ? Number(currentSalesOrder.status) : null,
+                paymentMethodId: currentSalesOrder.paymentMethodId != null ? Number(currentSalesOrder.paymentMethodId) : null
             };
 
             await SalesOrderService.updateSalesOrder(currentSalesOrder.orderId, orderData);
@@ -169,8 +237,9 @@ const SalesOrder = () => {
             totalAmount: order.totalAmount || '',
             discountAmount: order.discountAmount || '',
             taxAmount: order.taxAmount || '',
-            status: order.status || '',
-            paymentMethod: order.paymentMethod || ''
+            status: order.status != null ? order.status : 0,
+            paymentMethodId: order.paymentMethodId != null ? order.paymentMethodId : 1,
+            paymentMethod: order.paymentMethod || getPaymentMethodLabel(order.paymentMethodId)
         });
         setShowEditModal(true);
     };
@@ -194,7 +263,14 @@ const SalesOrder = () => {
     };
 
     return (
-        <div className="p-4">
+        <div className="p-4" style={{ fontFamily: "'Be Vietnam Pro', 'Segoe UI', sans-serif" }}>
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap');
+                .admin-table tr:hover td { background: #f0f9ff !important; }
+                .action-btn { background: none; border: none; cursor: pointer; font-size: 13px; font-weight: 600; padding: 5px 10px; border-radius: 6px; transition: background 0.15s; }
+                .action-btn.edit { color: #3b82f6; } .action-btn.edit:hover { background: #eff6ff; }
+                .action-btn.delete { color: #ef4444; } .action-btn.delete:hover { background: #fef2f2; }
+            `}</style>
             <div className="flex justify-between items-center mb-4">
                 <h1 className="text-2xl font-bold">Danh sách đơn hàng</h1>
                 <button
@@ -215,51 +291,56 @@ const SalesOrder = () => {
                 />
             </div>
 
-            <table className="min-w-full bg-white border border-gray-300">
-                <thead>
-                    <tr className="bg-gray-100">
-                        <th className="py-2 px-4 border">#</th>
-                        <th className="py-2 px-4 border">Mã đơn hàng</th>
-                        <th className="py-2 px-4 border">Mã khách hàng</th>
-                        <th className="py-2 px-4 border">Mã nhân viên</th>
-                        <th className="py-2 px-4 border">Ngày đặt hàng</th>
-                        <th className="py-2 px-4 border">Tổng tiền</th>
-                        <th className="py-2 px-4 border">Trạng thái</th>
-                        <th className="py-2 px-4 border">Phương thức thanh toán</th>
-                        <th className="py-2 px-4 border">Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {currentItems.map((item, index) => (
-                        <tr key={item.orderId || index} className="hover:bg-gray-50">
-                            <td className="py-2 px-4 border">{indexOfFirstItem + index + 1}</td>
-                            <td className="py-2 px-4 border">{item.orderCode || 'N/A'}</td>
-                            <td className="py-2 px-4 border">{item.customerId || 'N/A'}</td>
-                            <td className="py-2 px-4 border">{item.employeeId || 'N/A'}</td>
-                            <td className="py-2 px-4 border">{item.orderDate ? new Date(item.orderDate).toLocaleDateString() : 'N/A'}</td>
-                            <td className="py-2 px-4 border">{item.totalAmount || 'N/A'}</td>
-                            <td className="py-2 px-4 border">{item.status || 'N/A'}</td>
-                            <td className="py-2 px-4 border">{item.paymentMethod || 'N/A'}</td>
-                            <td className="py-2 px-4 border">
-                                <div className="flex space-x-2">
+            <div style={{ background: '#fff', borderRadius: '14px', border: '1.5px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+                <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                        <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                            {['#', 'Mã đơn hàng', 'Mã khách hàng', 'Mã nhân viên', 'Ngày đặt hàng', 'Tổng tiền', 'Trạng thái', 'Phương thức thanh toán', 'Thao tác'].map(h => (
+                                <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
+                                    {h}
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {currentItems.map((item, index) => (
+                            <tr key={item.orderId || index} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                <td style={{ padding: '13px 16px', color: '#475569', fontSize: '14px' }}>{indexOfFirstItem + index + 1}</td>
+                                <td style={{ padding: '13px 16px' }}>
+                                    <span style={{ fontWeight: '600', color: '#1e293b', fontFamily: 'monospace', fontSize: '13px', background: '#f1f5f9', padding: '3px 8px', borderRadius: '6px' }}>
+                                        {item.orderCode || 'N/A'}
+                                    </span>
+                                </td>
+                                <td style={{ padding: '13px 16px', color: '#475569', fontSize: '14px' }}>{item.customerId || 'N/A'}</td>
+                                <td style={{ padding: '13px 16px', color: '#475569', fontSize: '14px' }}>{item.employeeId || 'N/A'}</td>
+                                <td style={{ padding: '13px 16px', color: '#475569', fontSize: '14px' }}>{item.orderDate ? new Date(item.orderDate).toLocaleDateString() : 'N/A'}</td>
+                                <td style={{ padding: '13px 16px', color: '#0f172a', fontWeight: '600', fontSize: '14px' }}>{formatCurrency(item.totalAmount)}</td>
+                                <td style={{ padding: '13px 16px', color: '#475569', fontSize: '14px' }}>
+                                    <span style={{ fontWeight: '600', color: item.status === 3 ? '#10b981' : '#f59e0b' }}>
+                                        {getStatusLabel(item.status)}
+                                    </span>
+                                </td>
+                                <td style={{ padding: '13px 16px', color: '#475569', fontSize: '14px' }}>{getPaymentMethodLabel(item.paymentMethodId ?? item.paymentMethod)}</td>
+                                <td style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
                                     <button
                                         onClick={() => openEditModal(item)}
-                                        className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
+                                        className="action-btn edit"
+                                        style={{ marginRight: '4px' }}
                                     >
-                                        Sửa
+                                        ✏️ Sửa
                                     </button>
                                     <button
                                         onClick={() => openDeleteModal(item)}
-                                        className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                                        className="action-btn delete"
                                     >
-                                        Xóa
+                                        🗑️ Xóa
                                     </button>
-                                </div>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
 
             {/* Pagination */}
             {totalPages > 1 && (
@@ -267,11 +348,10 @@ const SalesOrder = () => {
                     <button
                         onClick={() => handlePageChange(currentPage - 1)}
                         disabled={currentPage === 1}
-                        className={`px-4 py-2 rounded-lg border transition-colors ${
-                            currentPage === 1
+                        className={`px-4 py-2 rounded-lg border transition-colors ${currentPage === 1
                                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                 : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                        }`}
+                            }`}
                     >
                         Trước
                     </button>
@@ -288,11 +368,10 @@ const SalesOrder = () => {
                                     <button
                                         key={page}
                                         onClick={() => handlePageChange(page)}
-                                        className={`px-3 py-2 rounded-lg transition-colors ${
-                                            isCurrentPage
+                                        className={`px-3 py-2 rounded-lg transition-colors ${isCurrentPage
                                                 ? 'bg-blue-600 text-white'
                                                 : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                                        }`}
+                                            }`}
                                     >
                                         {page}
                                     </button>
@@ -314,11 +393,10 @@ const SalesOrder = () => {
                     <button
                         onClick={() => handlePageChange(currentPage + 1)}
                         disabled={currentPage === totalPages}
-                        className={`px-4 py-2 rounded-lg border transition-colors ${
-                            currentPage === totalPages
+                        className={`px-4 py-2 rounded-lg border transition-colors ${currentPage === totalPages
                                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                 : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                        }`}
+                            }`}
                     >
                         Sau
                     </button>
@@ -399,25 +477,35 @@ const SalesOrder = () => {
                             </div>
                             <div className="mb-4">
                                 <label htmlFor="add-status" className="block mb-1 font-medium">Trạng thái</label>
-                                <input
+                                <select
                                     id="add-status"
-                                    type="text"
                                     name="status"
                                     value={currentSalesOrder.status}
                                     onChange={handleInputChange}
                                     className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
+                                >
+                                    {SALES_ORDER_STATUS_OPTIONS.map(option => (
+                                        <option key={option.value} value={option.value}>
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
                             <div className="mb-4">
                                 <label htmlFor="add-payment-method" className="block mb-1 font-medium">Phương thức thanh toán</label>
-                                <input
+                                <select
                                     id="add-payment-method"
-                                    type="text"
-                                    name="paymentMethod"
-                                    value={currentSalesOrder.paymentMethod}
+                                    name="paymentMethodId"
+                                    value={currentSalesOrder.paymentMethodId}
                                     onChange={handleInputChange}
                                     className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
+                                >
+                                    {PAYMENT_METHOD_OPTIONS.map(option => (
+                                        <option key={option.value} value={option.value}>
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
                             <div className="flex justify-end gap-2">
                                 <button
@@ -517,25 +605,35 @@ const SalesOrder = () => {
                             </div>
                             <div className="mb-4">
                                 <label htmlFor="edit-status" className="block mb-1 font-medium">Trạng thái</label>
-                                <input
+                                <select
                                     id="edit-status"
-                                    type="text"
                                     name="status"
                                     value={currentSalesOrder.status}
                                     onChange={handleInputChange}
                                     className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
+                                >
+                                    {SALES_ORDER_STATUS_OPTIONS.map(option => (
+                                        <option key={option.value} value={option.value}>
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
                             <div className="mb-4">
                                 <label htmlFor="edit-payment-method" className="block mb-1 font-medium">Phương thức thanh toán</label>
-                                <input
+                                <select
                                     id="edit-payment-method"
-                                    type="text"
-                                    name="paymentMethod"
-                                    value={currentSalesOrder.paymentMethod}
+                                    name="paymentMethodId"
+                                    value={currentSalesOrder.paymentMethodId}
                                     onChange={handleInputChange}
                                     className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
+                                >
+                                    {PAYMENT_METHOD_OPTIONS.map(option => (
+                                        <option key={option.value} value={option.value}>
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
                             <div className="flex justify-end gap-2">
                                 <button

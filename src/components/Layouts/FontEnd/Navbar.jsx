@@ -42,9 +42,14 @@ const Navbar = () => {
         checkAuthStatus();
       }
     };
+    const handleOpenLogin = () => setShowLogin(true);
     window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('openLogin', handleOpenLogin);
+    window.addEventListener('authChanged', checkAuthStatus);
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('openLogin', handleOpenLogin);
+      window.removeEventListener('authChanged', checkAuthStatus);
     };
   }, []);
 
@@ -223,7 +228,6 @@ const Navbar = () => {
                 {[
                   { to: '/HomePage', label: 'Trang chủ' },
                   { to: '/products', label: 'Sản Phẩm' },
-                  { to: '/services', label: 'Dịch Vụ' },
                   { to: '/contact', label: 'Liên Hệ' }
                 ].map(({ to, label }) => (
                   <NavLink
@@ -358,7 +362,6 @@ const Navbar = () => {
             {[
               { to: '/HomePage', label: 'Trang chủ' },
               { to: '/products', label: 'Sản Phẩm' },
-              { to: '/services', label: 'Dịch Vụ' },
               { to: '/contact', label: 'Liên Hệ' }
             ].map(({ to, label }) => (
               <NavLink

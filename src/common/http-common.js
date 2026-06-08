@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 const http = axios.create({
-  baseURL: 'https://worrisome-abdominal-barrier.ngrok-free.dev/api',
+  baseURL: 'http://localhost:3030/api',
+  //baseURL: 'https://worrisome-abdominal-barrier.ngrok-free.dev/api',
   headers: {
     'Content-Type': 'application/json',
     'ngrok-skip-browser-warning': 'true',   // ← thêm dòng này

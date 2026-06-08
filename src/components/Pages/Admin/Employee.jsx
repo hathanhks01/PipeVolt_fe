@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import EmployeeService from '../../../Services/EmployeeService';
+import { showAlert } from '../../../common/ui';
 
 const Employee = () => {
     const [employees, setEmployees] = useState([]);
@@ -43,8 +44,8 @@ const Employee = () => {
     // Tìm kiếm nhân viên theo mã hoặc điện thoại
     useEffect(() => {
         const filtered = employees.filter((emp) =>
-            (emp.employeeCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-             emp.phone?.toLowerCase().includes(searchTerm.toLowerCase()))
+        (emp.employeeCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            emp.phone?.toLowerCase().includes(searchTerm.toLowerCase()))
         );
         setFilteredEmployees(filtered);
     }, [searchTerm, employees]);
@@ -156,12 +157,20 @@ const Employee = () => {
             setAccountInfo(result);
             setShowAccountModal(true);
         } catch (error) {
-            alert('Tạo tài khoản thất bại hoặc nhân viên đã có tài khoản!');
+            showAlert('Tạo tài khoản thất bại hoặc nhân viên đã có tài khoản!', 'error');
         }
     };
 
     return (
-        <div className="p-4">
+        <div className="p-4" style={{ fontFamily: "'Be Vietnam Pro', 'Segoe UI', sans-serif" }}>
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap');
+                .admin-table tr:hover td { background: #f0f9ff !important; }
+                .action-btn { background: none; border: none; cursor: pointer; font-size: 13px; font-weight: 600; padding: 5px 10px; border-radius: 6px; transition: background 0.15s; }
+                .action-btn.edit { color: #3b82f6; } .action-btn.edit:hover { background: #eff6ff; }
+                .action-btn.delete { color: #ef4444; } .action-btn.delete:hover { background: #fef2f2; }
+                .action-btn.account { color: #10b981; } .action-btn.account:hover { background: #ecfdf5; }
+            `}</style>
             <div className="flex justify-between items-center mb-4">
                 <h1 className="text-2xl font-bold">Danh sách nhân viên</h1>
                 <button
@@ -180,63 +189,69 @@ const Employee = () => {
                 className="w-full border p-2 rounded mb-4"
             />
 
-            <table className="min-w-full border border-gray-300">
-                <thead className="bg-gray-100">
-                    <tr>
-                        <th className="border px-3 py-2">#</th>
-                        <th className="border px-3 py-2">Mã NV</th>
-                        <th className="border px-3 py-2">Tên NV</th>
-                        <th className="border px-3 py-2">Chức vụ</th>
-                        <th className="border px-3 py-2">SĐT</th>
-                        <th className="border px-3 py-2">Email</th>
-                        <th className="border px-3 py-2">Ngày vào làm</th>
-                        <th className="border px-3 py-2">Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {filteredEmployees.length === 0 && (
-                        <tr>
-                            <td colSpan={8} className="text-center p-3">
-                                Không có dữ liệu
-                            </td>
+            <div style={{ background: '#fff', borderRadius: '14px', border: '1.5px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+                <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                        <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                            {['#', 'Mã NV', 'Tên NV', 'Chức vụ', 'SĐT', 'Email', 'Ngày vào làm', 'Thao tác'].map(h => (
+                                <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
+                                    {h}
+                                </th>
+                            ))}
                         </tr>
-                    )}
-                    {filteredEmployees.map((emp, idx) => (
-                        <tr key={emp.employeeId || idx} className="hover:bg-gray-50">
-                            <td className="border px-3 py-2">{idx + 1}</td>
-                            <td className="border px-3 py-2">{emp.employeeCode || 'N/A'}</td>
-                            <td className="border px-3 py-2">{emp.employeeName || 'N/A'}</td>
-                            <td className="border px-3 py-2">{emp.position || 'N/A'}</td>
-                            <td className="border px-3 py-2">{emp.phone || 'N/A'}</td>
-                            <td className="border px-3 py-2">{emp.email || 'N/A'}</td>
-                            <td className="border px-3 py-2">
-                                {emp.hireDate ? new Date(emp.hireDate).toLocaleDateString() : 'N/A'}
-                            </td>
-                            <td className="border px-3 py-2">
-                                <button
-                                    onClick={() => openEditModal(emp)}
-                                    className="bg-green-500 text-white px-2 py-1 rounded mr-2 hover:bg-green-600"
-                                >
-                                    Sửa
-                                </button>
-                                <button
-                                    onClick={() => openDeleteModal(emp)}
-                                    className="bg-red-500 text-white px-2 py-1 rounded mr-2 hover:bg-red-600"
-                                >
-                                    Xóa
-                                </button>
-                                <button
-                                    onClick={() => handleGenerateAccount(emp.employeeId)}
-                                    className="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600"
-                                    title="Tạo tài khoản đăng nhập"
-                                >
-                                    Tạo tài khoản
-                                </button>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {filteredEmployees.length === 0 ? (
+                            <tr>
+                                <td colSpan={8} style={{ textAlign: 'center', padding: '24px', color: '#94a3b8', fontSize: '15px' }}>
+                                    Không có dữ liệu
+                                </td>
+                            </tr>
+                        ) : (
+                            filteredEmployees.map((emp, idx) => (
+                                <tr key={emp.employeeId || idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                    <td style={{ padding: '13px 16px', color: '#475569', fontSize: '14px' }}>{idx + 1}</td>
+                                    <td style={{ padding: '13px 16px' }}>
+                                        <span style={{ fontWeight: '600', color: '#1e293b', fontFamily: 'monospace', fontSize: '13px', background: '#f1f5f9', padding: '3px 8px', borderRadius: '6px' }}>
+                                            {emp.employeeCode || 'N/A'}
+                                        </span>
+                                    </td>
+                                    <td style={{ padding: '13px 16px', color: '#334155', fontSize: '14px', fontWeight: '600' }}>{emp.employeeName || 'N/A'}</td>
+                                    <td style={{ padding: '13px 16px', color: '#475569', fontSize: '14px' }}>{emp.position || 'N/A'}</td>
+                                    <td style={{ padding: '13px 16px', color: '#475569', fontSize: '14px' }}>{emp.phone || 'N/A'}</td>
+                                    <td style={{ padding: '13px 16px', color: '#475569', fontSize: '14px' }}>{emp.email || 'N/A'}</td>
+                                    <td style={{ padding: '13px 16px', color: '#475569', fontSize: '14px' }}>
+                                        {emp.hireDate ? new Date(emp.hireDate).toLocaleDateString() : 'N/A'}
+                                    </td>
+                                    <td style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
+                                        <button
+                                            onClick={() => openEditModal(emp)}
+                                            className="action-btn edit"
+                                            style={{ marginRight: '4px' }}
+                                        >
+                                            ✏️ Sửa
+                                        </button>
+                                        <button
+                                            onClick={() => openDeleteModal(emp)}
+                                            className="action-btn delete"
+                                            style={{ marginRight: '4px' }}
+                                        >
+                                            🗑️ Xóa
+                                        </button>
+                                        <button
+                                            onClick={() => handleGenerateAccount(emp.employeeId)}
+                                            className="action-btn account"
+                                            title="Tạo tài khoản đăng nhập"
+                                        >
+                                            🔑 Tạo tài khoản
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
 
             {/* Modal Thêm */}
             {showAddModal && (
