@@ -514,5 +514,5 @@ export default function ChatWindow() {
 ## Liên hệ & Hỗ trợ
 
 Nếu gặp vấn đề hoặc có câu hỏi, liên hệ:
-- Backend Dev: [Backend README](../PipeVolt/README.md)
+- Backend Dev: [Backend README](https://github.com/hathanhks01/PipeVolt/blob/main/README.md) 
 - API Docs: `http://localhost:5000/swagger/`
