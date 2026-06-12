@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageCircle, X, Send, Wifi, WifiOff, AlertCircle, Loader2 } from 'lucide-react';
+import { MessageCircle, X, Send, Wifi, WifiOff, AlertCircle, Loader2, Sparkles, User } from 'lucide-react';
 import * as signalR from '@microsoft/signalr';
 import ChatService from '../../../Services/ChatService';
+import ChatbotService from '../../../Services/ChatbotService';
 import ChatMessageItem from '../../ChatMessageItem';
 import JwtUtils from '../../../constants/JwtUtils';
 import { createHubConnection } from '../../../common/signalr-common';
@@ -22,6 +23,8 @@ const ChatWidget = () => {
   const [typingUsers, setTypingUsers] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [authTick, setAuthTick] = useState(0);
+  const [chatMode, setChatMode] = useState('ai'); // 'ai' or 'human'
+  const [isBotResponding, setIsBotResponding] = useState(false);
 
   const connectionRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -222,6 +225,22 @@ const ChatWidget = () => {
         messageContent: text,
         messageType: 0,
       });
+
+      if (chatMode === 'ai') {
+        setIsBotResponding(true);
+        try {
+          await ChatbotService.sendMessage({
+            chatRoomId: chatRoom.chatRoomId,
+            message: text,
+            senderId: customerId,
+            senderType: SENDER_CUSTOMER,
+          });
+        } catch (botErr) {
+          console.error('[ChatWidget] chatbot error:', botErr);
+        } finally {
+          setIsBotResponding(false);
+        }
+      }
     } catch (err) {
       setInputText(text);
       setErrorMsg('Gửi tin nhắn thất bại. Thử lại.');
@@ -229,7 +248,7 @@ const ChatWidget = () => {
     } finally {
       setIsSending(false);
     }
-  }, [inputText, chatRoom, customerId, isSending, isInitializing, stopTyping]);
+  }, [inputText, chatRoom, customerId, isSending, isInitializing, stopTyping, chatMode]);
 
   const handleInputChange = useCallback((e) => {
     const val = e.target.value;
@@ -307,6 +326,32 @@ const ChatWidget = () => {
             </button>
           </div>
 
+          {/* Chat Mode Toggle */}
+          <div className="flex p-1 bg-gray-50 border-b border-gray-100 flex-shrink-0">
+            <button
+              onClick={() => setChatMode('ai')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 ${
+                chatMode === 'ai'
+                  ? 'bg-white text-blue-600 shadow-sm border border-gray-200/30'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100/50'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              Trợ lý AI
+            </button>
+            <button
+              onClick={() => setChatMode('human')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 ${
+                chatMode === 'human'
+                  ? 'bg-white text-blue-600 shadow-sm border border-gray-200/30'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100/50'
+              }`}
+            >
+              <User className="w-3.5 h-3.5" />
+              Nhân viên hỗ trợ
+            </button>
+          </div>
+
           {errorMsg && (
             <div className="bg-amber-50 border-b border-amber-200 px-3 py-2 flex items-center gap-2 flex-shrink-0">
               <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
@@ -365,6 +410,17 @@ const ChatWidget = () => {
                           <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                         </div>
                         <span className="text-xs text-gray-400">{typingUsers.join(', ')} đang nhập...</span>
+                      </div>
+                    )}
+
+                    {isBotResponding && (
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="flex gap-1 bg-blue-50 border border-blue-100 rounded-2xl rounded-bl-sm px-3 py-2.5 shadow-sm">
+                          <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                          <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                          <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        </div>
+                        <span className="text-xs text-blue-500 font-medium">Trợ lý AI đang trả lời...</span>
                       </div>
                     )}
 

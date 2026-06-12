@@ -1,11 +1,14 @@
 import axios from 'axios';
+import { Url } from '../constants/config';
+
+// Prod (Docker): VITE_API_URL kosong → dùng path tương đối, nginx proxy /api/ → api:8080
+// Dev (local): VITE_API_URL chưa set → Url = http://localhost:3030/ → baseURL = http://localhost:3030/api
+const baseURL = Url ? `${Url.replace(/\/$/, '')}/api` : '/api';
 
 const http = axios.create({
-  baseURL: 'http://localhost:3030/api',
-  //baseURL: 'https://worrisome-abdominal-barrier.ngrok-free.dev/api',
+  baseURL,
   headers: {
     'Content-Type': 'application/json',
-    'ngrok-skip-browser-warning': 'true',   // ← thêm dòng này
   },
 });
 
