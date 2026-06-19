@@ -7,6 +7,7 @@ import CardCategory from '../Card/cardCategory';
 import ProductCategoryService from '../../../Services/ProductCategoryService';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { showAlert } from '../../../common/ui';
 
 const Product = () => {
   const [product, setProduct] = useState([]);
@@ -57,10 +58,10 @@ const Product = () => {
         return;
       }
       await CartService.addItemToCart(customerId, itemData);
-      alert('Đã thêm vào giỏ hàng!');
+      showAlert('Đã thêm sản phẩm vào giỏ hàng!', 'success');
     } catch (error) {
       console.error('Lỗi khi thêm sản phẩm vào giỏ hàng:', error);
-      alert('Thêm sản phẩm thất bại!');
+      showAlert('Thêm sản phẩm vào giỏ hàng thất bại!', 'error');
     }
   };
 

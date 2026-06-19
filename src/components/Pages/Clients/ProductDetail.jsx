@@ -6,6 +6,7 @@ import JwtUtils from '../../../constants/JwtUtils';
 import { Url } from '../../../constants/config';
 import Login from '../Auth/Login';
 import { ArrowLeft } from 'lucide-react';
+import { showAlert } from '../../../common/ui';
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -42,9 +43,9 @@ const ProductDetail = () => {
     setAdding(true);
     try {
       await CartService.addItemToCart(customerId, { productId: product.productId, quantity });
-      alert('Đã thêm vào giỏ hàng!');
+      showAlert('Đã thêm sản phẩm vào giỏ hàng!', 'success');
     } catch (error) {
-      alert('Thêm vào giỏ hàng thất bại!');
+      showAlert('Thêm sản phẩm vào giỏ hàng thất bại!', 'error');
     }
     setAdding(false);
   };
@@ -72,7 +73,7 @@ const ProductDetail = () => {
       }];
       navigate('/checkout', { state: { selectedCartItems } });
     } catch (error) {
-      alert('Không thể xử lý. Vui lòng thử lại!');
+      showAlert('Không thể xử lý yêu cầu. Vui lòng thử lại!', 'error');
     }
     setBuyingNow(false);
   };

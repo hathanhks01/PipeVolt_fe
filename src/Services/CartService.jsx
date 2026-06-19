@@ -46,6 +46,7 @@ const CartService = {
   deleteCart: async (cartId) => {
     try {
       const response = await http.delete(`Cart/${cartId}`);
+      window.dispatchEvent(new CustomEvent('cartChanged', { detail: { cartItems: [] } }));
       return response.data;
     } catch (error) {
       console.error('Error deleting cart:', error);
@@ -61,6 +62,7 @@ const CartService = {
           'Content-Type': 'application/json',
         },
       });
+      window.dispatchEvent(new CustomEvent('cartChanged', { detail: response.data }));
       return response.data;
     } catch (error) {
       console.error('Error adding item to cart:', error);
@@ -76,6 +78,7 @@ const CartService = {
           'Content-Type': 'application/json',
         },
       });
+      window.dispatchEvent(new CustomEvent('cartChanged', { detail: response.data }));
       return response.data;
     } catch (error) {
       console.error('Error updating cart item:', error);
@@ -87,6 +90,7 @@ const CartService = {
   removeCartItem: async (customerId, cartItemId) => {
     try {
       const response = await http.delete(`Cart/${customerId}/items/${cartItemId}`);
+      window.dispatchEvent(new CustomEvent('cartChanged', { detail: response.data }));
       return response.data;
     } catch (error) {
       console.error('Error removing cart item:', error);
@@ -98,6 +102,7 @@ const CartService = {
   checkout: async (customerId) => {
     try {
       const response = await http.post(`Cart/${customerId}/checkout`);
+      window.dispatchEvent(new CustomEvent('cartChanged', { detail: { cartItems: [] } }));
       return response.data;
     } catch (error) {
       console.error('Error during checkout:', error);

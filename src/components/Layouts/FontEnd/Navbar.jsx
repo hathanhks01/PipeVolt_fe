@@ -5,6 +5,7 @@ import Login from '../../Pages/Auth/Login';
 import AuthService from '../../../Services/AuthService';
 import JwtUtils from '../../../constants/JwtUtils';
 import ProductService from '../../../Services/ProductService';
+import CartService from '../../../Services/CartService';
 import { googleLogout } from '@react-oauth/google';
 import { Url } from '../../../constants/config';
 const Navbar = () => {
@@ -20,10 +21,65 @@ const Navbar = () => {
   const searchTimeout = useRef();
   const navigate = useNavigate();
 
+  const [cartCount, setCartCount] = useState(0);
+  const [shouldAnimate, setShouldAnimate] = useState(false);
+
+  const fetchCartCount = async () => {
+    try {
+      const customerId = JwtUtils.getCurrentCustomerId();
+      if (!customerId) {
+        setCartCount(0);
+        return;
+      }
+      const cart = await CartService.getCart(customerId);
+      const items = cart?.cartItems || [];
+      const count = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+      setCartCount(count);
+    } catch (error) {
+      console.error('Error fetching cart count:', error);
+      setCartCount(0);
+    }
+  };
+
+  useEffect(() => {
+    if (cartCount > 0) {
+      setShouldAnimate(true);
+      const timer = setTimeout(() => setShouldAnimate(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [cartCount]);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchCartCount();
+    } else {
+      setCartCount(0);
+    }
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    const handleCartChange = (e) => {
+      if (e.detail && e.detail.cartItems) {
+        const count = e.detail.cartItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
+        setCartCount(count);
+      } else if (e.detail && typeof e.detail.count === 'number') {
+        setCartCount(e.detail.count);
+      } else {
+        fetchCartCount();
+      }
+    };
+
+    window.addEventListener('cartChanged', handleCartChange);
+    return () => {
+      window.removeEventListener('cartChanged', handleCartChange);
+    };
+  }, []);
+
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
   const toggleLoginModal = () => setShowLogin(!showLogin);
   const toggleUserDropdown = () => setShowUserDropdown(!showUserDropdown);
   const isAdmin = JwtUtils.getCurrentUserType();
+  const canAccessCart = JwtUtils.canAccessCart();
 
   const handleCartClick = (e) => {
     if (!isLoggedIn) {
@@ -298,12 +354,16 @@ const Navbar = () => {
                 </div>
 
                 {/* Cart */}
-                {isLoggedIn ? (
+                {canAccessCart ? (
                   <Link to="/cart" className="relative group ml-4">
                     <button className="hover:bg-gray-800 p-2 rounded-full group-hover:text-blue-400 transition-all duration-200">
                       <ShoppingCart className="h-5 w-5" />
                     </button>
-                    <span className="absolute -top-1 -right-1 bg-blue-500 text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center">0</span>
+                    {cartCount > 0 && (
+                      <span className={`absolute -top-1 -right-1.5 bg-gradient-to-r from-red-500 to-pink-500 text-white text-[9px] font-extrabold rounded-full px-1 min-w-[16px] h-4 flex items-center justify-center border border-gray-900 shadow-md shadow-red-500/20 pointer-events-none ${shouldAnimate ? 'animate-badge-pop' : ''}`}>
+                        {cartCount > 99 ? '99+' : cartCount}
+                      </span>
+                    )}
                   </Link>
                 ) : (
                   <button
@@ -312,7 +372,11 @@ const Navbar = () => {
                     title="Vui lòng đăng nhập để xem giỏ hàng"
                   >
                     <ShoppingCart className="h-5 w-5" />
-                    <span className="absolute -top-1 -right-1 bg-blue-500 text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center">0</span>
+                    {cartCount > 0 && (
+                      <span className={`absolute -top-1 -right-1.5 bg-gradient-to-r from-red-500 to-pink-500 text-white text-[9px] font-extrabold rounded-full px-1 min-w-[16px] h-4 flex items-center justify-center border border-gray-900 shadow-md shadow-red-500/20 pointer-events-none ${shouldAnimate ? 'animate-badge-pop' : ''}`}>
+                        {cartCount > 99 ? '99+' : cartCount}
+                      </span>
+                    )}
                   </button>
                 )}
               </div>
@@ -379,10 +443,38 @@ const Navbar = () => {
               </NavLink>
             ))}
 
-            <Link to="/cart" className="flex items-center space-x-2 px-3 py-2 hover:bg-gray-700 transition-colors" onClick={isLoggedIn ? () => setIsMenuOpen(false) : handleCartClick}>
-              <ShoppingCart className="h-5 w-5" />
-              <span>Giỏ Hàng</span>
-            </Link>
+            {canAccessCart ? (
+              <Link to="/cart" className="flex items-center justify-between px-3 py-2 hover:bg-gray-700 transition-colors" onClick={() => setIsMenuOpen(false)}>
+                <div className="flex items-center space-x-2">
+                  <ShoppingCart className="h-5 w-5" />
+                  <span>Giỏ Hàng</span>
+                </div>
+                {cartCount > 0 && (
+                  <span className={`bg-gradient-to-r from-red-500 to-pink-500 text-white text-[10px] font-extrabold rounded-full px-2 py-0.5 border border-gray-800 shadow-md shadow-red-500/20 ${shouldAnimate ? 'animate-badge-pop' : ''}`}>
+                    {cartCount > 99 ? '99+' : cartCount}
+                  </span>
+                )}
+              </Link>
+            ) : (
+              <button
+                type="button"
+                className="flex items-center justify-between px-3 py-2 hover:bg-gray-700 transition-colors w-full text-left"
+                onClick={(e) => {
+                  handleCartClick(e);
+                  setIsMenuOpen(false);
+                }}
+              >
+                <div className="flex items-center space-x-2">
+                  <ShoppingCart className="h-5 w-5" />
+                  <span>Giỏ Hàng</span>
+                </div>
+                {cartCount > 0 && (
+                  <span className={`bg-gradient-to-r from-red-500 to-pink-500 text-white text-[10px] font-extrabold rounded-full px-2 py-0.5 border border-gray-800 shadow-md shadow-red-500/20 ${shouldAnimate ? 'animate-badge-pop' : ''}`}>
+                    {cartCount > 99 ? '99+' : cartCount}
+                  </span>
+                )}
+              </button>
+            )}
 
             {/* Mobile User Section */}
             {isLoggedIn ? (

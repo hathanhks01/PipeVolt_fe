@@ -44,6 +44,18 @@ const JwtUtils = {
     const decoded = this.getDecodedToken();
     if (!decoded?.exp) return true;
     return decoded.exp < Date.now() / 1000;
+  },
+
+  isAuthenticated() {
+    return !!this.getToken() && !this.isTokenExpired();
+  },
+
+  isCustomer() {
+    return String(this.getCurrentUserType()) === '2';
+  },
+
+  canAccessCart() {
+    return this.isAuthenticated() && !!this.getCurrentCustomerId();
   }
 };
 

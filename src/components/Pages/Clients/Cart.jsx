@@ -3,13 +3,13 @@ import { ShoppingCart, Plus, Minus, Trash2, Package, AlertCircle, CheckCircle2 }
 import CartService from '../../../Services/CartService';
 import JwtUtils from '../../../constants/JwtUtils';
 import { useNavigate } from 'react-router-dom';
+import { showAlert } from '../../../common/ui';
 
 const CartItemList = () => {
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [updatingItems, setUpdatingItems] = useState(new Set());
-  const [notification, setNotification] = useState(null);
   const [selectedItems, setSelectedItems] = useState(new Set());
   const [selectAll, setSelectAll] = useState(false);
 
@@ -24,10 +24,15 @@ const CartItemList = () => {
     try {
       setLoading(true);
       setError(null);
+      if (!JwtUtils.isAuthenticated()) {
+        setCartItems([]);
+        setError('Vui lòng đăng nhập để xem giỏ hàng');
+        return;
+      }
       const customerId = JwtUtils.getCurrentCustomerId();
       if (!customerId) {
         setCartItems([]);
-        setError('Vui lòng đăng nhập để xem giỏ hàng');
+        setError('Giỏ hàng chỉ dành cho tài khoản khách hàng. Tài khoản admin/nhân viên không thể mua hàng qua giỏ.');
         return;
       }
       const cart = await CartService.getCart(customerId);
@@ -42,10 +47,9 @@ const CartItemList = () => {
     }
   };
 
-  // Show notification
+  // Show notification via common showAlert
   const showNotification = (message, type = 'success') => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), 3000);
+    showAlert(message, type);
   };
 
   // Update quantity
@@ -191,17 +195,27 @@ const handleCheckout = () => {
   }
 
   if (error) {
+    const isLoginRequired = error === 'Vui lòng đăng nhập để xem giỏ hàng';
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-center">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-2" />
           <p className="text-red-600 mb-4">{error}</p>
-          <button
-            onClick={loadCartItems}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Thử lại
-          </button>
+          {isLoginRequired ? (
+            <button
+              onClick={() => navigate('/login')}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Đăng nhập
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate('/')}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Về trang chủ
+            </button>
+          )}
         </div>
       </div>
     );
@@ -209,22 +223,6 @@ const handleCheckout = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white pb-24">
-      {/* Notification */}
-      {notification && (
-        <div
-          className={`fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 flex items-center ${
-            notification.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-          }`}
-        >
-          {notification.type === 'success' ? (
-            <CheckCircle2 className="h-5 w-5 mr-2" />
-          ) : (
-            <AlertCircle className="h-5 w-5 mr-2" />
-          )}
-          {notification.message}
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex items-center mb-6">
         <input

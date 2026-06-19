@@ -23,4 +23,20 @@ http.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Tự động văng ra màn hình đăng nhập khi token hết hạn (401)
+http.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      sessionStorage.removeItem('authToken');
+      sessionStorage.removeItem('userInfo');
+      sessionStorage.removeItem('savedUserName');
+      sessionStorage.removeItem('savedPassword');
+      window.dispatchEvent(new Event('authChanged'));
+      window.dispatchEvent(new Event('openLogin'));
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default http;
